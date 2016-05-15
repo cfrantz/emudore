@@ -1,7 +1,7 @@
 # emudore, a Commodore 64 *and NES* emulator
 
 ![basic] (/pics/basic.gif "basic")
-![zelda] (/pics/zelda.gif "zelda")
+![zelda] (/pics/zelda.png "zelda")
 
 # What's this?
 
