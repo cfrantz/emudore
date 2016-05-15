@@ -13,7 +13,7 @@ I've restructured the code a bit and have discarded cmake in favor of bazel.
 
 # Why
 
-The emudore source is wonderful in it's straightfoward simplicity and I wanted
+The emudore source is wonderful in its straightfoward simplicity and I wanted
 to see if I could get it to emulate another 6502-based system.
 
 I few months ago I spent some time learning Nim and ran across the
