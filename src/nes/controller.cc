@@ -5,7 +5,8 @@ Controller::Controller(NES* nes) :
     nes_(nes),
     buttons_(0),
     index_(0),
-    strobe_(0)
+    strobe_(0),
+    movie_(0)
 {}
 
 uint8_t Controller::Read() {
@@ -97,4 +98,18 @@ void Controller::set_buttons(SDL_Event* event) {
             }
         }
     }
+}
+
+void Controller::AppendButtons(uint8_t b) {
+    movie_.push_back(b);
+}
+
+void Controller::Emulate(int frame) {
+    if (frame < int(movie_.size())) {
+        buttons_ = movie_.at(frame);
+//        if (buttons_) {
+//            printf("Press %02x at %d\n", buttons_, frame);
+//        }
+    }
+
 }

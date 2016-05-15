@@ -11,6 +11,9 @@ class PPU {
     void Write(uint16_t addr, uint8_t val);
     void Emulate();
 
+    inline uint64_t frame() const { return frame_; }
+    inline int scanline() const { return scanline_; }
+    inline int cycle() const { return cycle_; }
   private:
     void NmiChange();
     void set_control(uint8_t val);

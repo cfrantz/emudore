@@ -18,6 +18,7 @@ cc_library(
     ],
     deps = [
         ":nes-interface",
+        ":mem-interface",
     ],
 )
 
@@ -37,6 +38,24 @@ cc_library(
     deps = [
         ":nes-interface",
     ],
+)
+
+cc_library(
+    name = "fm2",
+    srcs = ["fm2.cc"],
+    hdrs = ["fm2.h"],
+    deps = [
+        ":controller",
+        ":nes-interface",
+    ],
+)
+
+cc_library(
+	name = "gfx",
+	linkopts = [
+		"-lSDL2_gfx",
+	],
+	hdrs = [ "gfx.h" ],
 )
 
 cc_library(
@@ -95,6 +114,8 @@ cc_library(
         ":apu",
         ":cartridge",
         ":controller",
+        ":fm2",
+        ":gfx",
         ":mapper",
         ":mem",
         ":nes-interface",
@@ -110,6 +131,7 @@ cc_library(
     srcs = ["ppu.cc"],
     hdrs = ["ppu.h"],
     deps = [
+        ":fm2",
         ":mem-interface",
         ":nes-interface",
         "//src:io",

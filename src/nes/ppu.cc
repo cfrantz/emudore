@@ -1,4 +1,5 @@
 #include <tuple>
+#include "src/nes/fm2.h"
 #include "src/nes/ppu.h"
 #include "src/nes/mem.h"
 #include "src/io.h"
@@ -109,6 +110,7 @@ void PPU::set_dma(uint8_t val) {
     }
     // TODO(cfrantz):
     // stall cpu for 513 + (cpu.cycles % 2) cycles.
+    nes_->Stall(513 + nes_->cpu_cycles() % 2);
 }
 
 uint8_t PPU::Read(uint16_t addr) {
@@ -169,7 +171,7 @@ void PPU::CopyY() {
 }
 
 void PPU::SetVerticalBlank() {
-    static uint64_t last;
+    //static uint64_t last;
     nmi_.occured = true;
     NmiChange();
     nes_->io()->screen_blit(picture_);
@@ -356,6 +358,7 @@ void PPU::Tick() {
             cycle_ = 0;
             scanline_ = 0;
             frame_++;
+            nes_->movie()->Emulate(frame_);
             f_ = f_ ^ 1;
             return;
         }
@@ -368,6 +371,7 @@ void PPU::Tick() {
         if (scanline_ > 261) {
             scanline_ = 0;
             frame_++;
+            nes_->movie()->Emulate(frame_);
             f_ = f_ ^ 1;
         }
     }

@@ -48,6 +48,8 @@ class IO
 
     std::function<void(uint8_t*, int)> audio_callback_;
     std::function<void(SDL_Event*)> controller_callback_;
+    std::function<void(SDL_Event*)> keyboard_callback_;
+    std::function<void(SDL_Renderer*)> refresh_callback_;
     uint32_t *frame_;
     size_t cols_;
     size_t rows_;
@@ -91,6 +93,14 @@ class IO
                     std::function<void(uint8_t*, int)> callback);
     uint64_t clock_micros();
     void yield();
+    inline void set_keyboard_callback(
+            std::function<void(SDL_Event*)> callback) {
+        keyboard_callback_ = callback;
+    }
+    inline void set_refresh_callback(
+            std::function<void(SDL_Renderer*)> callback) {
+        refresh_callback_ = callback;
+    }
 };
 
 // inline member functions accesible from other classes /////////////////////

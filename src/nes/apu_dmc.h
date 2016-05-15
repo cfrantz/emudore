@@ -1,10 +1,11 @@
 #ifndef EMUDORE_SRC_NES_APU_DMC_H
 #define EMUDORE_SRC_NES_APU_DMC_H
 #include <cstdint>
+#include "src/nes/nes.h"
 
 class DMC {
   public:
-    DMC();
+    DMC(NES* nes);
     
     uint8_t Output();
     void StepReader();
@@ -19,6 +20,7 @@ class DMC {
     inline uint16_t length() const { return current_length_; }
     void restart();
   private:
+    NES* nes_;
     bool enabled_;
     uint8_t value_;
 

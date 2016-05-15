@@ -1,10 +1,12 @@
 #include "src/nes/apu_dmc.h"
+#include "src/nes/mem.h"
 
 static uint8_t dmc_table[16] = {
     214, 190, 170, 160, 143, 127, 113, 107, 95, 80, 71, 64, 53, 42, 36, 27,
 };
 
-DMC::DMC() :
+DMC::DMC(NES* nes) :
+    nes_(nes),
     enabled_(0),
     value_(0),
     sample_address_(0), sample_length_(0),
@@ -18,8 +20,8 @@ uint8_t DMC::Output() {
 
 void DMC::StepReader() {
     if (current_length_ > 0 && bit_count_ == 0) {
-        // cpu stall += 4
-        // shift_register_ = mem[current_address_];
+        nes_->Stall(4);
+        shift_register_ = nes_->memory()->Read(current_address_);
         bit_count_ = 8;
         current_address_++;
         if (current_address_ == 0)

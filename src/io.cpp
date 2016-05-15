@@ -69,6 +69,14 @@ IO::IO(size_t cols, size_t rows, double refresh_rate)
   prev_frame_was_at_ = std::chrono::high_resolution_clock::now();
 
   controller_callback_ = [](SDL_Event* event) {};
+  refresh_callback_ = [](SDL_Renderer* r) {};
+  keyboard_callback_ = [this](SDL_Event* event) {
+    if (event->type == SDL_KEYDOWN) {
+      handle_keydown(event->key.keysym.scancode);
+    } else {
+      handle_keyup(event->key.keysym.scancode);
+    }
+  };
 }
 
 IO::~IO()
@@ -246,10 +254,8 @@ bool IO::emulate()
     switch(event.type)
     {
     case SDL_KEYDOWN:
-      handle_keydown(event.key.keysym.scancode);
-      break;
     case SDL_KEYUP:
-      handle_keyup(event.key.keysym.scancode);
+      keyboard_callback_(&event);
       break;
     case SDL_QUIT:
       retval = false;
@@ -361,6 +367,7 @@ void IO::screen_refresh()
   SDL_UpdateTexture(texture_, NULL, frame_, cols_ * sizeof(uint32_t));
   SDL_RenderClear(renderer_);
   SDL_RenderCopy(renderer_,texture_, NULL, NULL);
+  refresh_callback_(renderer_);
   SDL_RenderPresent(renderer_);
   //vsync();
 }
