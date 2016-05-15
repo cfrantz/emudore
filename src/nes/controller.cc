@@ -97,5 +97,4 @@ void Controller::set_buttons(SDL_Event* event) {
             }
         }
     }
-    printf("SDL Event type = %d, buttons = %02x\n", event->type, buttons_);
 }

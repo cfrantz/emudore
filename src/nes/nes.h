@@ -1,13 +1,13 @@
 #ifndef EMUDORE_SRC_NES_NES_H
 #define EMUDORE_SRC_NES_NES_H
 #include <string>
+#include "src/io.h"
 
 class APU;
 class Cpu;
 class Cartridge;
 class Controller;
 class Debugger;
-class IO;
 class Mapper;
 class Mem;
 class PPU;
@@ -28,6 +28,8 @@ class NES {
     inline Mem* memory() { return mem_; }
     inline PPU* ppu() { return ppu_; }
     inline uint32_t palette(uint8_t c) { return palette_[c % 64]; }
+
+    inline void yield() const { io_->yield(); }
 
     static const int frequency = 1789773;
     static constexpr double frame_counter_rate = frequency / 240.0;

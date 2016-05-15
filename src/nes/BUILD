@@ -42,6 +42,9 @@ cc_library(
 cc_library(
     name = "nes-interface",
     hdrs = ["nes.h"],
+    deps = [
+        "//src:io",
+    ],
 )
 cc_library(
     name = "mem-interface",
@@ -118,6 +121,7 @@ cc_binary(
     srcs = ["t1.cc"],
     linkopts = [
         "-lSDL2",
+        "-lpthread",
     ],
     deps = [
         ":nes",

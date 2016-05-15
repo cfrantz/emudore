@@ -1,9 +1,11 @@
 #include <string.h>
+#include <gflags/gflags.h>
 #include <SDL2/SDL.h>
 
 #include "src/nes/apu.h"
 #include "src/nes/nes.h"
 
+DEFINE_bool(audio_yield, true, "Yield when about to overrun the audio buffer.");
 
 static float pulse_table[32];
 static float other_table[204];
@@ -113,11 +115,15 @@ void APU::Emulate() {
     int s1 = int(c1 / NES::sample_rate);
     int s2 = int(c2 / NES::sample_rate);
     if (s1 != s2) {
+        if (FLAGS_audio_yield) {
+            while(len_ == BUFFERLEN)
+                nes_->yield();
+        }
         SDL_LockMutex(mutex_);
-        if (len_ < DATALEN) {
+        if (len_ < BUFFERLEN) {
             data_[len_++] = Output();
         } else {
-            printf("Overrun\n");
+            fprintf(stderr, "Audio overrun\n");
         }
         SDL_UnlockMutex(mutex_);
     }
@@ -133,7 +139,7 @@ void APU::PlayBuffer(uint8_t* stream, int bufsz) {
         len_ = rest;
         SDL_UnlockMutex(mutex_);
     } else {
-        printf("Underrun\n");
+        fprintf(stderr, "Audio underrun\n");
         memset(stream, 0, bufsz);
     }
 }

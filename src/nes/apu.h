@@ -1,6 +1,7 @@
 #ifndef EMUDORE_SRC_NES_APU_H
 #define EMUDORE_SRC_NES_APU_H
 #include <cstdint>
+#include <atomic>
 #include <SDL2/SDL.h>
 
 #include "src/nes/apu_dmc.h"
@@ -26,6 +27,8 @@ class APU {
     void SignalIRQ();
     float Output();
     void Emulate();
+
+    static const int BUFFERLEN = 4096;
   private:
     void set_frame_counter(uint8_t val);
     void set_control(uint8_t val);
@@ -42,9 +45,8 @@ class APU {
     uint8_t frame_value_;;
     bool frame_irq_;
 
-    static const int DATALEN = 65536;
-    float data_[DATALEN];
-    int len_;
+    float data_[BUFFERLEN];
+    std::atomic<int> len_;
 };
 
 #endif // EMUDORE_SRC_NES_APU_H

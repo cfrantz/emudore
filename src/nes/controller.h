@@ -14,8 +14,8 @@ class Controller {
 
     static const int BUTTON_A      = 0x01;
     static const int BUTTON_B      = 0x02;
-    static const int BUTTON_START  = 0x04;
-    static const int BUTTON_SELECT = 0x08;
+    static const int BUTTON_SELECT = 0x04;
+    static const int BUTTON_START  = 0x08;
     static const int BUTTON_UP     = 0x10;
     static const int BUTTON_DOWN   = 0x20;
     static const int BUTTON_LEFT   = 0x40;

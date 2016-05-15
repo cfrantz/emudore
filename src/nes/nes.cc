@@ -42,11 +42,10 @@ NES::NES() {
     ppu_ = new PPU(this);
     io_ = new IO(256, 240, 60.0988);
 
-    io_->init_audio(44100, 1, 4096, AUDIO_F32,
+    io_->init_audio(44100, 1, APU::BUFFERLEN/2, AUDIO_F32,
             [this](uint8_t* stream, int len) {
                 apu_->PlayBuffer(stream, len);
             });
-    io_->controller_config = "/usr/local/share/gamecontrollerdb.txt";
     io_->init_controllers([this](SDL_Event* event) {
         controller_[0]->set_buttons(event);
     });
