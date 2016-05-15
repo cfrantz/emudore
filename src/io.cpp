@@ -23,6 +23,7 @@
 #include "src/gamecontrollerdb.h"
 
 DEFINE_string(ctrlcfg, "", "Path to the SDL gamecontrollerdb.txt file.");
+DEFINE_double(scale, 1.0, "Resolution scale factor.\n");
 
 // clas ctor and dtor //////////////////////////////////////////////////////////
 
@@ -40,8 +41,8 @@ IO::IO(size_t cols, size_t rows, double refresh_rate)
         "emudore",
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        cols_ * 2,
-        rows_ * 2,
+        cols_ * FLAGS_scale,
+        rows_ * FLAGS_scale,
         SDL_WINDOW_OPENGL
   );
   /* use a single texture and hardware acceleration */
