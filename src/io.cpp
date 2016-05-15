@@ -16,7 +16,13 @@
  */
 
 #include <stdexcept>
+#include <sched.h>
+#include <gflags/gflags.h>
+
 #include "src/io.h"
+#include "src/gamecontrollerdb.h"
+
+DEFINE_string(ctrlcfg, "", "Path to the SDL gamecontrollerdb.txt file.");
 
 // clas ctor and dtor //////////////////////////////////////////////////////////
 
@@ -421,8 +427,15 @@ uint64_t IO::clock_micros() {
 }
 
 void IO::init_controllers(std::function<void(SDL_Event*)> callback) {
-    if (!controller_config.empty())
-        SDL_GameControllerAddMappingsFromFile(controller_config.c_str());
+    if (!FLAGS_ctrlcfg.empty()) {
+        // User supplied gamecontrollerdb.txt
+        SDL_GameControllerAddMappingsFromFile(FLAGS_ctrlcfg.c_str());
+    } else {
+        // Built-in gamecontrollerdb.txt
+        SDL_RWops* f = SDL_RWFromConstMem(kGameControllerDB,
+                                          kGameControllerDB_len);
+        SDL_GameControllerAddMappingsFromRW(f, 1);
+    }
 
     int controllers = 0;
     char guid[64];
@@ -447,4 +460,8 @@ void IO::init_controllers(std::function<void(SDL_Event*)> callback) {
         SDL_GameControllerOpen(i);
     }
     controller_callback_ = callback;
+}
+
+void IO::yield() {
+    sched_yield();
 }

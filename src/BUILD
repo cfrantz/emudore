@@ -27,8 +27,16 @@ cc_library(
     srcs = ["io.cpp"],
     deps = [
         ":cpu",
+        ":gamecontrollerdb",
         ":util",
+        "//external:gflags",
     ],
+)
+
+cc_library(
+    name = "gamecontrollerdb",
+    hdrs = ["gamecontrollerdb.h"],
+    srcs = ["gamecontrollerdb.cc"],
 )
 
 cc_library(

@@ -90,7 +90,7 @@ class IO
     void init_audio(int freq, int chan, int bufsz, SDL_AudioFormat fmt,
                     std::function<void(uint8_t*, int)> callback);
     uint64_t clock_micros();
-    std::string controller_config;
+    void yield();
 };
 
 // inline member functions accesible from other classes /////////////////////
