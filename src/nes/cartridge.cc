@@ -30,15 +30,19 @@ void Cartridge::LoadFile(const std::string& filename) {
         fprintf(stderr, "Couldn't read header.\n");
         abort();
     }
+    PrintHeader();
 
     mirror_ = MirrorMode(header_.mirror0 | (header_.mirror1 << 1));
     prglen_ = 16384 * header_.prgsz;
     prg_ = new uint8_t[prglen_];
 
-    chrlen_ = 8192 * header_.chrsz;
+    if (header_.chrsz) {
+        chrlen_ = 8192 * header_.chrsz;
+    } else {
+        // No chr rom, need and 8k buffer (ram?)
+        chrlen_ = 8192;
+    }
     chr_ = new uint8_t[chrlen_];
-
-    PrintHeader();
 
     if (header_.trainer) {
         trainer_ = new uint8_t[512];
