@@ -25,8 +25,8 @@
  * https://github.com/radare/radare2
  */
 
-#include "cpu.h"
-#include "memory.h"
+#include "src/cpu.h"
+#include "src/memory.h"
 
 #include <vector>
 #include <string>

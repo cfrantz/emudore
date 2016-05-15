@@ -20,16 +20,16 @@
 
 #include <functional>
 
-#include "cpu.h"
-#include "memory.h"
-#include "cia1.h"
-#include "cia2.h"
-#include "vic.h"
-#include "sid.h"
-#include "io.h"
+#include "src/cpu.h"
+#include "src/c64/c64memory.h"
+#include "src/c64/cia1.h"
+#include "src/c64/cia2.h"
+#include "src/c64/vic.h"
+#include "src/c64/sid.h"
+#include "src/io.h"
 
 #ifdef DEBUGGER_SUPPORT
-#include "debugger.h"
+#include "src/debugger.h"
 #endif
  
 /**
@@ -42,7 +42,7 @@ class C64
 {
   private:
     Cpu *cpu_;
-    Memory *mem_;
+    C64Memory *mem_;
     Cia1 *cia1_;
     Cia2 *cia2_;
     Vic *vic_;
@@ -59,7 +59,7 @@ class C64
     void emscripten_loop();
     void callback(std::function<bool()> cb){callback_ = cb;};
     Cpu * cpu(){return cpu_;};
-    Memory * memory(){return mem_;};
+    C64Memory * memory(){return mem_;};
     IO * io(){return io_;};
     /* test cpu */
     void test_cpu();

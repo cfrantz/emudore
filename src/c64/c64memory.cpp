@@ -16,13 +16,13 @@
  */
 
 #include <fstream>
-#include "memory.h"
-#include "util.h"
-#include "vic.h"
-#include "cia1.h"
-#include "cia2.h"
+#include "src/c64/c64memory.h"
+#include "src/util.h"
+#include "src/c64/vic.h"
+#include "src/c64/cia1.h"
+#include "src/c64/cia2.h"
 
-Memory::Memory()
+C64Memory::C64Memory() : Memory()
 {
   /**
    * 64 kB memory buffers, zeroed.
@@ -39,7 +39,7 @@ Memory::Memory()
   write_byte_no_io(kAddrDataDirection,0x2f);
 }
 
-Memory::~Memory()
+C64Memory::~C64Memory()
 {
   delete [] mem_ram_;
   delete [] mem_rom_;
@@ -52,7 +52,7 @@ Memory::~Memory()
  * for a total of 32 different memory layouts, for now we only take
  * in count three bits : HIRAM/LORAM/CHAREN
  */
-void Memory::setup_memory_banks(uint8_t v)
+void C64Memory::setup_memory_banks(uint8_t v)
 {
   /* get config bits */
   bool hiram  = ((v&kHIRAM) != 0);
@@ -85,7 +85,7 @@ void Memory::setup_memory_banks(uint8_t v)
 /**
  * @brief writes a byte to RAM without performing I/O
  */
-void Memory::write_byte_no_io(uint16_t addr, uint8_t v)
+void C64Memory::write_byte_no_io(uint16_t addr, uint8_t v)
 {
   mem_ram_[addr] = v;
 }
@@ -93,7 +93,7 @@ void Memory::write_byte_no_io(uint16_t addr, uint8_t v)
 /**
  * @brief writes a byte to RAM handling I/O
  */
-void Memory::write_byte(uint16_t addr, uint8_t v)
+void C64Memory::write_byte(uint16_t addr, uint8_t v)
 {
   uint16_t page = addr&0xff00;
   /* ZP */
@@ -138,7 +138,7 @@ void Memory::write_byte(uint16_t addr, uint8_t v)
 /**
  * @brief reads a byte from RAM or ROM (depending on bank config)
  */
-uint8_t Memory::read_byte(uint16_t addr)
+uint8_t C64Memory::read_byte(uint16_t addr)
 {
   uint8_t  retval = 0;
   uint16_t page   = addr&0xff00;
@@ -196,7 +196,7 @@ uint8_t Memory::read_byte(uint16_t addr)
  * @brief writes a byte without performing I/O (always to RAM)
  */
 
-uint8_t Memory::read_byte_no_io(uint16_t addr)
+uint8_t C64Memory::read_byte_no_io(uint16_t addr)
 {
   return mem_ram_[addr];
 }
@@ -204,7 +204,7 @@ uint8_t Memory::read_byte_no_io(uint16_t addr)
 /**
  * @brief reads a word performing I/O
  */
-uint16_t Memory::read_word(uint16_t addr)
+uint16_t C64Memory::read_word(uint16_t addr)
 {
   return read_byte(addr) | (read_byte(addr+1) << 8);
 }
@@ -212,7 +212,7 @@ uint16_t Memory::read_word(uint16_t addr)
 /**
  * @brief reads a word withouth performing I/O
  */
-uint16_t Memory::read_word_no_io(uint16_t addr)
+uint16_t C64Memory::read_word_no_io(uint16_t addr)
 {
   return read_byte_no_io(addr) | (read_byte_no_io(addr+1) << 8);
 }
@@ -220,7 +220,7 @@ uint16_t Memory::read_word_no_io(uint16_t addr)
 /** 
  * @brief writes a word performing I/O
  */
-void Memory::write_word(uint16_t addr, uint16_t v)
+void C64Memory::write_word(uint16_t addr, uint16_t v)
 {
   write_byte(addr, (uint8_t)(v));
   write_byte(addr+1, (uint8_t)(v>>8));
@@ -229,7 +229,7 @@ void Memory::write_word(uint16_t addr, uint16_t v)
 /** 
  * @brief writes a word without performing I/O
  */
-void Memory::write_word_no_io(uint16_t addr, uint16_t v)
+void C64Memory::write_word_no_io(uint16_t addr, uint16_t v)
 {
   write_byte_no_io(addr, (uint8_t)(v));
   write_byte_no_io(addr+1, (uint8_t)(v>>8));
@@ -250,7 +250,7 @@ void Memory::write_word_no_io(uint16_t addr, uint16_t v)
  *  1000-1FFF
  *  9000-9FFF
  */
-uint8_t Memory::vic_read_byte(uint16_t addr)
+uint8_t C64Memory::vic_read_byte(uint16_t addr)
 {
   uint8_t v;
   uint16_t vic_addr = cia2_->vic_base_address() + (addr & 0x3fff);
@@ -265,7 +265,7 @@ uint8_t Memory::vic_read_byte(uint16_t addr)
 /**
  * @brief loads a external binary into ROM
  */
-void Memory::load_rom(const std::string &f, uint16_t baseaddr)
+void C64Memory::load_rom(const std::string &f, uint16_t baseaddr)
 {
   std::string path = "./assets/roms/" + f;
   std::ifstream is(path, std::ios::in | std::ios::binary);
@@ -281,7 +281,7 @@ void Memory::load_rom(const std::string &f, uint16_t baseaddr)
 /**
  * @brief loads a external binary into RAM
  */
-void Memory::load_ram(const std::string &f, uint16_t baseaddr)
+void C64Memory::load_ram(const std::string &f, uint16_t baseaddr)
 {
   std::string path = "./assets/" + f;
   std::ifstream is(path, std::ios::in | std::ios::binary);
@@ -299,7 +299,7 @@ void Memory::load_ram(const std::string &f, uint16_t baseaddr)
 /**
  * @brief dumps memory as seen by the CPU to stdout
  */
-void Memory::dump()
+void C64Memory::dump()
 {
   for(unsigned int p=0 ; p < kMemSize ; p++)
   {

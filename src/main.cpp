@@ -19,8 +19,8 @@
 #include <string>
 #include <algorithm>
 
-#include "c64.h"
-#include "loader.h"
+#include "src/c64/c64.h"
+#include "src/c64/loader.h"
 #ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif

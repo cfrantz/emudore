@@ -18,9 +18,9 @@
 #ifndef EMUDORE_VIC_H
 #define EMUDORE_VIC_H
 
-#include "io.h"
-#include "cpu.h"
-#include "memory.h"
+#include "src/io.h"
+#include "src/cpu.h"
+#include "src/c64/c64memory.h"
 
 /**
  * @brief MOS Video Interface Chip II (VIC-II)
@@ -33,7 +33,7 @@
 class Vic
 {
   private:
-    Memory *mem_;
+    C64Memory *mem_;
     Cpu    *cpu_;
     IO     *io_;
     /* sprites  */
@@ -101,7 +101,7 @@ class Vic
   public:
     Vic();
     bool emulate();
-    void memory(Memory *v){mem_ = v;};
+    void memory(C64Memory *v){mem_ = v;};
     void cpu(Cpu *v){cpu_ = v;};
     void io(IO *v){io_ = v;};
     void write_register(uint8_t r, uint8_t v);

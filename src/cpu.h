@@ -19,7 +19,7 @@
 #define EMUDORE_CPU_H
 
 #include <cstdint>
-#include "memory.h"
+#include "src/memory.h"
 
 /**
  * @brief MOS 6510 microprocessor

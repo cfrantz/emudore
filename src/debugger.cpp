@@ -29,8 +29,8 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "util.h"
-#include "debugger.h"
+#include "src/util.h"
+#include "src/debugger.h"
 
 Debugger::Debugger()
 {
@@ -149,6 +149,7 @@ std::string Debugger::emu_handle_cmd(const std::string &s)
 {
   std::vector<std::string> args = split_cmd(s);
   std::string r("");
+  printf("emu_handle_cmd(%s)\n", s.c_str());
   try
   {
     if(args.at(0) == "dr")

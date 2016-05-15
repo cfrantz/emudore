@@ -17,8 +17,8 @@
 #ifndef EMUDORE_CIA1_H
 #define EMUDORE_CIA1_H
 
-#include "io.h"
-#include "cpu.h"
+#include "src/io.h"
+#include "src/cpu.h"
 
 /**
  * @brief MOS 6526 Complex Interface Adapter #1

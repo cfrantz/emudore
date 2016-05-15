@@ -14,19 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "c64.h"
-#include "util.h"
+#include "src/c64/c64.h"
+#include "src/util.h"
 
 C64::C64()
 {
   /* create chips */
   cpu_  = new Cpu();
-  mem_  = new Memory();
+  mem_  = new C64Memory();
   cia1_ = new Cia1();
   cia2_ = new Cia2();
   vic_  = new Vic();
   sid_  = new Sid();
-  io_   = new IO();
+  io_   = new IO(Vic::kVisibleScreenWidth,
+                 Vic::kVisibleScreenHeight,
+                 Vic::kRefreshRate);
   /* init cpu */
   cpu_->memory(mem_);
   cpu_->reset();
@@ -129,7 +131,7 @@ void C64::test_cpu()
 {
   uint16_t pc=0;
   /* unmap C64 ROMs */
-  mem_->write_byte(Memory::kAddrMemoryLayout, 0);
+  mem_->write_byte(C64Memory::kAddrMemoryLayout, 0);
   /* load tests into RAM */
   mem_->load_ram("tests/6502_functional_test.bin",0x400);
   cpu_->pc(0x400);

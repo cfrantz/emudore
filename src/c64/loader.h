@@ -19,7 +19,7 @@
 #define EMUDORE_LOADER_H
 
 #include <fstream>
-#include "c64.h"
+#include "src/c64/c64.h"
 
 /**
  * @brief Program loader

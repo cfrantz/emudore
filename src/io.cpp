@@ -16,14 +16,16 @@
  */
 
 #include <stdexcept>
-#include "io.h"
-#include "vic.h"
+#include "src/io.h"
 
 // clas ctor and dtor //////////////////////////////////////////////////////////
 
-IO::IO()
+IO::IO(size_t cols, size_t rows, double refresh_rate)
+    : cols_(cols), rows_(rows), refresh_rate_(refresh_rate)
 {
-  SDL_Init(SDL_INIT_VIDEO);
+  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO
+           | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER
+           );
   /**
    * We create the window double the original pixel size, 
    * the renderer takes care of upscaling 
@@ -32,12 +34,10 @@ IO::IO()
         "emudore",
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        Vic::kVisibleScreenWidth * 2,
-        Vic::kVisibleScreenHeight * 2,
+        cols_ * 2,
+        rows_ * 2,
         SDL_WINDOW_OPENGL
   );
-  cols_ = Vic::kVisibleScreenWidth;
-  rows_ = Vic::kVisibleScreenHeight;
   /* use a single texture and hardware acceleration */
   renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
   texture_  = SDL_CreateTexture(renderer_,
@@ -60,6 +60,8 @@ IO::IO()
   init_keyboard();
   next_key_event_at_ = 0;
   prev_frame_was_at_ = std::chrono::high_resolution_clock::now();
+
+  controller_callback_ = [](SDL_Event* event) {};
 }
 
 IO::~IO()
@@ -245,8 +247,17 @@ bool IO::emulate()
     case SDL_QUIT:
       retval = false;
       break;
+    case SDL_CONTROLLERDEVICEADDED:
+    case SDL_CONTROLLERDEVICEREMOVED:
+    case SDL_CONTROLLERDEVICEREMAPPED:
+    case SDL_CONTROLLERBUTTONDOWN:
+    case SDL_CONTROLLERBUTTONUP:
+    case SDL_CONTROLLERAXISMOTION:
+      controller_callback_(&event);
+      break;
     }
   }
+#if 0
   /* process fake keystrokes if any */
   if(!key_event_queue_.empty() && 
      cpu_->cycles() > next_key_event_at_)
@@ -264,6 +275,7 @@ bool IO::emulate()
     }
     next_key_event_at_ = cpu_->cycles() + kWait;
   }
+#endif
   return retval;
 }
 
@@ -327,6 +339,10 @@ void IO::screen_draw_border(int y, int color)
 {
   screen_draw_rect(0,y,cols_,color);
 }
+
+void IO::screen_blit(uint32_t* data) {
+    memcpy(frame_, data, rows_*cols_*sizeof(uint32_t));
+}
  
 /**
  * @brief refresh screen 
@@ -339,8 +355,29 @@ void IO::screen_refresh()
   SDL_RenderClear(renderer_);
   SDL_RenderCopy(renderer_,texture_, NULL, NULL);
   SDL_RenderPresent(renderer_);
-  vsync();
+  //vsync();
 }
+
+
+void IO::init_audio(int freq, int chan, int bufsz, SDL_AudioFormat fmt,
+                    std::function<void(uint8_t*, int)> callback) {
+    SDL_AudioSpec want, have;
+    SDL_AudioDeviceID dev;
+
+    SDL_memset(&want, 0, sizeof(want));
+    want.freq = freq;
+    want.channels = chan;
+    want.samples = bufsz;
+    want.format = fmt;
+    want.callback = IO::AudioCallback;
+    want.userdata = (void*)this;
+    audio_callback_ = callback;
+
+    dev = SDL_OpenAudioDevice(NULL, 0, &want, &have,
+                              SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    SDL_PauseAudioDevice(dev, 0);
+}
+
 
 /**
  * @brief vsync
@@ -362,7 +399,7 @@ void IO::vsync()
 {
   using namespace std::chrono;
   auto t = high_resolution_clock::now() - prev_frame_was_at_;
-  duration<double> rr(Vic::kRefreshRate);
+  duration<double> rr(refresh_rate_);
   /**
    * Microsoft's chrono is buggy and does not properly handle 
    * doubles, we need to recast to milliseconds.
@@ -370,4 +407,44 @@ void IO::vsync()
   auto ttw = duration_cast<milliseconds>(rr - t);
   std::this_thread::sleep_for(ttw);
   prev_frame_was_at_ = std::chrono::high_resolution_clock::now();
+}
+
+void IO::AudioCallback(void* userdata, uint8_t* stream, int len) {
+    IO* io = (IO*)userdata;
+    io->audio_callback_(stream, len);
+}
+
+uint64_t IO::clock_micros() {
+    struct timespec tp;
+    clock_gettime(CLOCK_MONOTONIC, &tp);
+    return tp.tv_sec * 1000000 + tp.tv_nsec / 1000;
+}
+
+void IO::init_controllers(std::function<void(SDL_Event*)> callback) {
+    if (!controller_config.empty())
+        SDL_GameControllerAddMappingsFromFile(controller_config.c_str());
+
+    int controllers = 0;
+    char guid[64];
+    for(int i=0; i<SDL_NumJoysticks(); ++i) {
+        const char *name, *desc;
+
+        SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(i),
+                                  guid, sizeof(guid));
+        if (SDL_IsGameController(i)) {
+            controllers++;
+            name = SDL_GameControllerNameForIndex(i);
+            desc = "Controller";
+        } else {
+            name = SDL_JoystickNameForIndex(i);
+            desc = "Joystick";
+        }
+        printf("%s %d: %s (guid: %s)\n", desc, i,
+                name ? name : "Unknown", guid);
+    }
+    for(int i=0; i<controllers; i++) {
+        printf("Opening controller %d\n", i);
+        SDL_GameControllerOpen(i);
+    }
+    controller_callback_ = callback;
 }

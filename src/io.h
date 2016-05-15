@@ -18,7 +18,7 @@
 #ifndef EMUDORE_IO_H
 #define EMUDORE_IO_H
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <queue>
 #include <chrono>
 #include <thread>
@@ -26,8 +26,8 @@
 #include <utility>
 #include <unordered_map>
 
-#include "cpu.h"
-#include "util.h"
+#include "src/cpu.h"
+#include "src/util.h"
 
 /**
  * @brief IO devices
@@ -45,9 +45,13 @@ class IO
     SDL_Renderer *renderer_;
     SDL_Texture *texture_;
     SDL_PixelFormat *format_;
+
+    std::function<void(uint8_t*, int)> audio_callback_;
+    std::function<void(SDL_Event*)> controller_callback_;
     uint32_t *frame_;
     size_t cols_;
     size_t rows_;
+    double refresh_rate_;
     unsigned int color_palette[16];
     uint8_t keyboard_matrix_[8];
     /* keyboard mappings */
@@ -65,13 +69,15 @@ class IO
     /* vertical refresh sync */
     std::chrono::high_resolution_clock::time_point prev_frame_was_at_;
     void vsync();
+    static void AudioCallback(void* userdata, uint8_t* stream, int len);
   public:
-    IO();
+    IO(size_t cols, size_t rows, double refresh_rate);
     ~IO();
     bool emulate();
     void cpu(Cpu *v){cpu_=v;};
     void init_color_palette();
     void init_keyboard();
+    void init_controllers(std::function<void(SDL_Event*)> callback);
     void handle_keydown(SDL_Keycode k);
     void handle_keyup(SDL_Keycode k);
     void type_character(char c);
@@ -79,7 +85,12 @@ class IO
     void screen_update_pixel(int x, int y, int color);
     void screen_draw_rect(int x, int y, int n, int color);
     void screen_draw_border(int y, int color);
+    void screen_blit(uint32_t* data);
     void screen_refresh();
+    void init_audio(int freq, int chan, int bufsz, SDL_AudioFormat fmt,
+                    std::function<void(uint8_t*, int)> callback);
+    uint64_t clock_micros();
+    std::string controller_config;
 };
 
 // inline member functions accesible from other classes /////////////////////

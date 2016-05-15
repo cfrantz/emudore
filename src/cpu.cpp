@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#include "cpu.h"
-#include "util.h"
+#include "src/cpu.h"
+#include "src/util.h"
 #include <sstream>
 
 /**

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "cia2.h"
+#include "src/c64/cia2.h"
 
 // ctor  /////////////////////////////////////////////////////////////////////
 

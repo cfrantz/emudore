@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "loader.h"
+#include "src/c64/loader.h"
 
 Loader::Loader(C64 *c64)
 {

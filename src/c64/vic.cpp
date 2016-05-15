@@ -15,8 +15,8 @@
  * limitations under the License.
  */
 
-#include "vic.h"
-#include "util.h"
+#include "src/c64/vic.h"
+#include "src/util.h"
 
 // ctor and emulate()  ///////////////////////////////////////////////////////
 
@@ -42,9 +42,9 @@ Vic::Vic()
   /* frame counter */
   frame_c_ = 0;
   /* default memory pointers */
-  screen_mem_ = Memory::kBaseAddrScreen;
-  char_mem_   = Memory::kBaseAddrChars;
-  bitmap_mem_ = Memory::kBaseAddrBitmap;
+  screen_mem_ = C64Memory::kBaseAddrScreen;
+  char_mem_   = C64Memory::kBaseAddrChars;
+  bitmap_mem_ = C64Memory::kBaseAddrBitmap;
   /* bit 0 is unused */
   mem_pointers_ = (1 << 0);
   /* current graphic mode */
@@ -423,7 +423,7 @@ uint8_t Vic::get_screen_char(int column, int row)
  */
 uint8_t Vic::get_char_color(int column, int row)
 {
-  uint16_t addr = Memory::kAddrColorRAM + (row * kGCols) + column;
+  uint16_t addr = C64Memory::kAddrColorRAM + (row * kGCols) + column;
   return (mem_->read_byte_no_io(addr) & 0x0f);
 }
 
