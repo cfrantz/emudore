@@ -51,14 +51,6 @@ cc_library(
 )
 
 cc_library(
-	name = "gfx",
-	linkopts = [
-		"-lSDL2_gfx",
-	],
-	hdrs = [ "gfx.h" ],
-)
-
-cc_library(
     name = "nes-interface",
     hdrs = ["nes.h"],
     deps = [
@@ -115,11 +107,11 @@ cc_library(
         ":cartridge",
         ":controller",
         ":fm2",
-        ":gfx",
         ":mapper",
         ":mem",
         ":nes-interface",
         ":ppu",
+        "//src/sdlutil:gfx",
         "//src:cpu",
         "//src:debugger",
         "//src:io",

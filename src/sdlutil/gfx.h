@@ -1,5 +1,6 @@
-#ifndef EMUDORE_SRC_NES_GFX_H
-#define EMUDORE_SRC_NES_GFX_H
+#ifndef EMUDORE_SRC_SDLUTIL_GFX_H
+#define EMUDORE_SRC_SDLUTIL_GFX_H
+
 #include <string.h>
 #include <stdint.h>
 #include <SDL2/SDL2_framerate.h>
@@ -363,4 +364,4 @@ class GFX {
 
 } // namespace
 
-#endif // EMUDORE_SRC_NES_GFX_H
+#endif // EMUDORE_SRC_SDLUTIL_GFX_H

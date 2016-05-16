@@ -10,10 +10,10 @@
 #include "src/nes/cartridge.h"
 #include "src/nes/controller.h"
 #include "src/nes/fm2.h"
-#include "src/nes/gfx.h"
 #include "src/nes/mapper.h"
 #include "src/nes/mem.h"
 #include "src/nes/ppu.h"
+#include "src/sdlutil/gfx.h"
 
 DEFINE_string(fm2, "", "FM2 Movie file.");
 
