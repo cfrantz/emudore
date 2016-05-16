@@ -8,6 +8,7 @@
 #include "src/nes/apu_noise.h"
 #include "src/nes/apu_pulse.h"
 #include "src/nes/apu_triangle.h"
+#include "src/nes/apu_wav.h"
 #include "src/nes/nes.h"
 
 class APU {
@@ -34,8 +35,8 @@ class APU {
     void set_control(uint8_t val);
 
     NES* nes_;
-    Pulse pulse_[2];
-    Triangle triangle_;
+    Wave pulse_[2];
+    Wave triangle_;
     Noise noise_;
     DMC dmc_;
     SDL_mutex *mutex_;

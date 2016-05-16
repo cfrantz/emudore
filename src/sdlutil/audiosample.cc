@@ -98,8 +98,8 @@ const std::map<std::string, double>& AudioSampleInstrument::notes() {
         double tr2 = pow(2, 1.0/12.0);
         for(int n=1; n<=88; n++) {
             double f = 440.0 * pow(tr2, n-49);
-            int i = (n+9) % 12;
-            int octave = (n+12) / 12;
+            int i = (n+8) % 12;
+            int octave = (n+8) / 12;
             sprintf(buf, "%s%d", kNoteNames[i], octave);
             notemap.insert(std::make_pair(std::string(buf), f));
         }

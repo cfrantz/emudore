@@ -7,6 +7,7 @@ cc_library(
         "apu_dmc.h",
         "apu_noise.h",
         "apu_pulse.h",
+        "apu_wav.h",
         "apu_triangle.h",
     ],
     srcs = [
@@ -14,11 +15,13 @@ cc_library(
         "apu_dmc.cc",
         "apu_noise.cc",
         "apu_pulse.cc",
+        "apu_wav.cc",
         "apu_triangle.cc",
     ],
     deps = [
         ":nes-interface",
         ":mem-interface",
+        "//src/sdlutil:audiosample",
     ],
 )
 

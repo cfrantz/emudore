@@ -7,6 +7,14 @@
 
 DEFINE_bool(audio_yield, true, "Yield when about to overrun the audio buffer.");
 
+DEFINE_string(p0wav, "", "Pulse 0 wav file.");
+DEFINE_string(p1wav, "", "Pulse 0 wav file.");
+DEFINE_string(twav, "", "Triangle wav file.");
+
+DEFINE_string(p0note, "C4", "Pulse 0 base note.");
+DEFINE_string(p1note, "C4", "Pulse 0 base note.");
+DEFINE_string(tnote, "C4", "Triangle base note.");
+
 static float pulse_table[32];
 static float other_table[204];
 
@@ -26,7 +34,8 @@ static void init_tables() {
 
 APU::APU(NES *nes)
     : nes_(nes),
-    pulse_({1, 2}),
+    pulse_({1,2}),
+    triangle_(3),
     dmc_(nes),
     cycle_(0),
     frame_period_(0),
@@ -36,22 +45,32 @@ APU::APU(NES *nes)
     len_(0) {
         mutex_ = SDL_CreateMutex();
         init_tables();
+
+        pulse_[0].Load(FLAGS_p0wav);
+        pulse_[1].Load(FLAGS_p1wav);
+        triangle_.Load(FLAGS_twav);
+
+        pulse_[0].SetBaseFrequency(FLAGS_p0note);
+        pulse_[1].SetBaseFrequency(FLAGS_p1note);
+        triangle_.SetBaseFrequency(FLAGS_tnote);
 }
 
 void APU::StepTimer() {
     if (cycle_ % 2 == 0) {
         pulse_[0].StepTimer();
         pulse_[1].StepTimer();
+        triangle_.StepTimer();
         noise_.StepTimer();
         dmc_.StepTimer();
     }
-    triangle_.StepTimer();
+    //triangle_.StepTimer();
 }
 
 void APU::StepEnvelope() {
     pulse_[0].StepEnvelope();
     pulse_[1].StepEnvelope();
-    triangle_.StepCounter();
+    //triangle_.StepCounter();
+    triangle_.StepEnvelope();
     noise_.StepEnvelope();
 }
 
@@ -94,12 +113,12 @@ void APU::StepFrameCounter() {
 }
 
 float APU::Output() {
-    uint8_t p0 = pulse_[0].Output();
-    uint8_t p1 = pulse_[1].Output();
-    uint8_t t = triangle_.Output();
+    float p0 = pulse_[0].Output();
+    float p1 = pulse_[1].Output();
+    float t = triangle_.Output();
     uint8_t n = noise_.Output();
     uint8_t d = dmc_.Output();
-    return pulse_table[p0+p1] + other_table[t*3 + n*2 + d];
+    return (p0+p1+t) / 3.0 + other_table[n*2 + d];
 }
 
 void APU::Emulate() {
