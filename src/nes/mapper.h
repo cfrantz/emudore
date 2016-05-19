@@ -10,7 +10,7 @@ class Mapper {
     Mapper(NES* nes) : nes_(nes) {}
     virtual uint8_t Read(uint16_t addr) = 0;
     virtual void Write(uint16_t addr, uint8_t val) = 0;
-    virtual void Emulate() = 0;
+    virtual void Emulate() {};
   protected:
     NES* nes_;
 };

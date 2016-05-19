@@ -76,8 +76,13 @@ cc_library(
 
 cc_library(
     name = "mapper-lib",
-    hdrs = ["mapper1.h"],
-    srcs = ["mapper1.cc"],
+    hdrs = [
+        "mapper1.h"
+    ],
+    srcs = [
+        "mapper1.cc",
+        "mapper2.cc",
+    ],
     deps = [
         ":mapper",
         ":cartridge",
