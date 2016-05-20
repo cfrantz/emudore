@@ -387,10 +387,10 @@ void PPU::Emulate() {
     const bool visible_cycle = (cycle_ > 0 && cycle_ <= 256);
     const bool fetch_cycle = prefetch_cycle || visible_cycle;
 
-    if (mask_.showbg || mask_.showsprites) {
-        if (visible_line && visible_cycle)
-            RenderPixel();
+    if (visible_line && visible_cycle)
+        RenderPixel();
 
+    if (mask_.showbg || mask_.showsprites) {
         if (render_line && fetch_cycle) {
             tiledata_ <<= 4;
             switch(cycle_ % 8) {
