@@ -20,10 +20,10 @@ class Mem: public Memory {
     void write_word(uint16_t addr, uint16_t v) override;
     void write_word_no_io(uint16_t addr, uint16_t v) override;
 
-    uint8_t ReadPPU(uint16_t addr);
-    void WritePPU(uint16_t addr, uint8_t val);
-    uint8_t ReadPalette(uint16_t addr);
-    void WritePalette(uint16_t addr, uint8_t val);
+    uint8_t PPURead(uint16_t addr);
+    void PPUWrite(uint16_t addr, uint8_t val);
+    uint8_t PaletteRead(uint16_t addr);
+    void PaletteWrite(uint16_t addr, uint8_t val);
   private:
     uint16_t MirrorAddress(int mode, uint16_t addr);
 

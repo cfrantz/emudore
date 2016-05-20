@@ -83,7 +83,7 @@ uint16_t Mem::MirrorAddress(int mode, uint16_t addr) {
     return lookup[mode][table] * 0x400 + offset + 0x2000;
 }
 
-uint8_t Mem::ReadPPU(uint16_t addr) {
+uint8_t Mem::PPURead(uint16_t addr) {
     addr %= 0x4000;
     if (addr < 0x2000) {
         return nes_->mapper()->Read(addr);
@@ -91,11 +91,11 @@ uint8_t Mem::ReadPPU(uint16_t addr) {
         int mode = int(nes_->cartridge()->mirror());
         return ppuram_[MirrorAddress(mode, addr) % 2048];
     } else {
-        return ReadPalette(addr % 32);
+        return PaletteRead(addr % 32);
     }
 }
 
-void Mem::WritePPU(uint16_t addr, uint8_t val) {
+void Mem::PPUWrite(uint16_t addr, uint8_t val) {
     addr %= 0x4000;
     if (addr < 0x2000) {
         nes_->mapper()->Write(addr, val);
@@ -103,17 +103,17 @@ void Mem::WritePPU(uint16_t addr, uint8_t val) {
         int mode = int(nes_->cartridge()->mirror());
         ppuram_[MirrorAddress(mode, addr) % 2048] = val;
     } else {
-        WritePalette(addr % 32, val);
+        PaletteWrite(addr % 32, val);
     }
 }
 
-uint8_t Mem::ReadPalette(uint16_t addr) {
+uint8_t Mem::PaletteRead(uint16_t addr) {
     if (addr >= 16 && (addr % 4) == 0)
         addr -= 16;
     return palette_[addr];
 }
 
-void Mem::WritePalette(uint16_t addr, uint8_t val) {
+void Mem::PaletteWrite(uint16_t addr, uint8_t val) {
     if (addr >= 16 && (addr % 4) == 0)
         addr -= 16;
     palette_[addr] = val;

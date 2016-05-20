@@ -87,19 +87,19 @@ void PPU::set_address(uint8_t val) {
 }
 
 uint8_t PPU::data() {
-    uint8_t result = nes_->memory()->ReadPPU(v_);
+    uint8_t result = nes_->memory()->PPURead(v_);
 
     if (v_ % 0x4000 < 0x3F00) {
         std::swap(buffered_data_, result);
     } else {
-        buffered_data_ = nes_->memory()->ReadPPU(v_ - 0x1000);
+        buffered_data_ = nes_->memory()->PPURead(v_ - 0x1000);
     }
     v_ += control_.increment ? 32 : 1;
     return result;
 }
 
 void PPU::set_data(uint8_t val) {
-    nes_->memory()->WritePPU(v_, val);
+    nes_->memory()->PPUWrite(v_, val);
     v_ += control_.increment ? 32 : 1;
 }
 
@@ -186,24 +186,24 @@ void PPU::ClearVerticalBlank() {
 }
 
 void PPU::FetchNameTableByte() {
-    nametable_ = nes_->memory()->ReadPPU(0x2000 | (v_ & 0x0FFF));
+    nametable_ = nes_->memory()->PPURead(0x2000 | (v_ & 0x0FFF));
 }
 
 void PPU::FetchAttributeByte() {
     uint16_t a = 0x23C0 | (v_ & 0x0C00) | ((v_ >> 4) & 0x38) | ((v_ >> 2) & 7);
     uint8_t shift = ((v_ >> 4) & 4) | (v_ & 2);
-    attrtable_ = ((nes_->memory()->ReadPPU(a) >> shift) & 3) << 2;
+    attrtable_ = ((nes_->memory()->PPURead(a) >> shift) & 3) << 2;
 }
 
 void PPU::FetchLowTileByte() {
     uint16_t a = (0x1000 * control_.bgtable) + (16 * nametable_) +
                  ((v_ >> 12) & 7);
-    lowtile_ = nes_->memory()->ReadPPU(a);
+    lowtile_ = nes_->memory()->PPURead(a);
 }
 
 void PPU::FetchHighTileByte() {
     uint16_t a = (0x1000 * control_.bgtable) + (16 * nametable_) +
-                 ((v_ >> 12) & 7); hightile_ = nes_->memory()->ReadPPU(a + 8);
+                 ((v_ >> 12) & 7); hightile_ = nes_->memory()->PPURead(a + 8);
 }
 
 void PPU::StoreTileData() {
@@ -274,7 +274,7 @@ void PPU::RenderPixel() {
             color = background;
         }
     }
-    picture_[y * 256 + x] = nes_->palette(nes_->memory()->ReadPalette(color));
+    picture_[y * 256 + x] = nes_->palette(nes_->memory()->PaletteRead(color));
 }
 
 uint32_t PPU::FetchSpritePattern(int i, int row) {
@@ -299,8 +299,8 @@ uint32_t PPU::FetchSpritePattern(int i, int row) {
     
     addr = 0x1000 * table + tile * 16 + row;
     uint8_t a = (attr & 3) << 2;
-    uint8_t lo = nes_->memory()->ReadPPU(addr);
-    uint8_t hi = nes_->memory()->ReadPPU(addr + 8);
+    uint8_t lo = nes_->memory()->PPURead(addr);
+    uint8_t hi = nes_->memory()->PPURead(addr + 8);
     uint32_t result = 0;
 
     for(i=0; i<8; i++) {
