@@ -140,7 +140,7 @@ void APU::PlayBuffer(uint8_t* stream, int bufsz) {
         len_ = rest;
         SDL_UnlockMutex(mutex_);
     } else {
-        fprintf(stderr, "Audio underrun\n");
+//        fprintf(stderr, "Audio underrun\n");
         memset(stream, 0, bufsz);
     }
 }

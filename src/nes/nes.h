@@ -58,8 +58,9 @@ class NES {
     PPU* ppu_;
 
     uint32_t palette_[64];
-    bool pause_, step_, debug_;
+    bool pause_, step_, debug_, reset_;
     int stall_;
+    int frame_;
 };
 
 #endif // EMUDORE_SRC_NES_NES_H

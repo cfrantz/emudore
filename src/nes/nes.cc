@@ -3,7 +3,7 @@
 
 #include "src/nes/nes.h"
 
-#include "src/cpu.h"
+#include "src/cpu2.h"
 #include "src/debugger.h"
 #include "src/io.h"
 #include "src/nes/apu.h"
@@ -40,14 +40,16 @@ NES::NES() :
     pause_(false),
     step_(false),
     debug_(false),
-    stall_(0)
+    reset_(false),
+    stall_(0),
+    frame_(0)
 {
     cpu_ = new Cpu();
     cart_ = new Cartridge(this);
-    controller_[0] = new Controller(this);
-    controller_[1] = new Controller(this);
-    controller_[2] = new Controller(this);
-    controller_[3] = new Controller(this);
+    controller_[0] = new Controller(this, 0);
+    controller_[1] = new Controller(this, 1);
+    controller_[2] = new Controller(this, 2);
+    controller_[3] = new Controller(this, 3);
     apu_ = new APU(this);
     mapper_ = nullptr;
     mem_ = new Mem(this);
@@ -99,7 +101,7 @@ void NES::DebugStuff(SDL_Renderer* r) {
     g.String(x0+112, y0+8, "A", (b & Controller::BUTTON_A) ? wh : gr);
 
     char buf[32];
-    int n = sprintf(buf, "Fr: %" PRIu64, ppu_->frame());
+    int n = sprintf(buf, "F: %" PRIu64 "/%d", ppu_->frame(), frame_);
     g.String(x0+128-n*8, y0+16, buf, wh);
 }
 
@@ -115,6 +117,9 @@ void NES::HandleKeyboard(SDL_Event *event) {
         case SDL_SCANCODE_PERIOD:
             debug_ = !debug_;
             break;
+        case SDL_SCANCODE_F11:
+            reset_ = true;
+            break;
         default:
             ;
         }
@@ -126,12 +131,15 @@ int NES::cpu_cycles() {
 }
 
 void NES::Run() {
-    int c0 = 0, c1;
     int t=0;
     int n;
+
+nesreset:
+    int c0 = 0, c1;
     bool pauseable = false;
     cpu_->reset();
     ppu_->Reset();
+    reset_ = false;
 
     for(t=0;;t++) {
         if (!debugger_->emulate())
@@ -141,6 +149,9 @@ void NES::Run() {
             if (!io_->emulate())
                 break;
         }
+        if (reset_)
+            goto nesreset;
+
         if (pauseable && pause_) {
             if (!step_)
                 continue;
@@ -166,8 +177,9 @@ void NES::Run() {
                 ppu_->Emulate();
                 mapper_->Emulate();
 
-                if (ppu_->scanline() == 261 && ppu_->cycle() == 1)
+                if (ppu_->scanline() == 261 && ppu_->cycle() == 1) {
                     pauseable = true;
+                }
             }
         }
     }

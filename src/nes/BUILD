@@ -106,6 +106,9 @@ cc_library(
 
 cc_library(
     name = "nes",
+    defines = [
+        "USE_NEWCPU=1",
+    ],
     srcs = ["nes.cc"],
     deps = [
         ":apu",
@@ -117,7 +120,7 @@ cc_library(
         ":nes-interface",
         ":ppu",
         "//src/sdlutil:gfx",
-        "//src:cpu",
+        "//src:cpu2",
         "//src:debugger",
         "//src:io",
     ],

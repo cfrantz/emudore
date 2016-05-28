@@ -11,11 +11,24 @@ cc_library(
 )
 
 cc_library(
+    name = "cpu2",
+    hdrs = ["cpu2.h"],
+    srcs = ["cpu2.cc"],
+    deps = [
+        ":memory",
+        ":util",
+    ],
+)
+
+cc_library(
     name = "debugger",
+    copts = [
+        "-DUSE_NEWCPU=1"
+    ],
     hdrs = ["debugger.h"],
     srcs = ["debugger.cpp"],
     deps = [
-        ":cpu",
+        ":cpu2",
         ":memory",
         ":util",
     ],
@@ -26,7 +39,7 @@ cc_library(
     hdrs = ["io.h"],
     srcs = ["io.cpp"],
     deps = [
-        ":cpu",
+#        ":cpu",
         ":gamecontrollerdb",
         ":util",
         "//external:gflags",
@@ -64,7 +77,21 @@ cc_binary(
 )
 
 
-
+cc_binary(
+    name = "test_cpu",
+    defines = [
+        "TESTCPU=1",
+    ],
+    srcs = ["test_cpu.cc"],
+    deps = [
+        ":cpu2",
+        ":memory",
+        "//external:gflags",
+    ],
+    linkopts = [
+        "-lpthread",
+    ],
+)
 
 
 

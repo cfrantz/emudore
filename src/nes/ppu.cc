@@ -171,13 +171,10 @@ void PPU::CopyY() {
 }
 
 void PPU::SetVerticalBlank() {
-    //static uint64_t last;
     nmi_.occured = true;
     NmiChange();
     nes_->io()->screen_blit(picture_);
     nes_->io()->screen_refresh();
-    //printf("frametime = %" PRIu64 "us\n", uint64_t(nes_->io()->clock_micros() - last));
-    //last = nes_->io()->clock_micros();
 }
 
 void PPU::ClearVerticalBlank() {
@@ -203,7 +200,8 @@ void PPU::FetchLowTileByte() {
 
 void PPU::FetchHighTileByte() {
     uint16_t a = (0x1000 * control_.bgtable) + (16 * nametable_) +
-                 ((v_ >> 12) & 7); hightile_ = nes_->memory()->PPURead(a + 8);
+                 ((v_ >> 12) & 7);
+    hightile_ = nes_->memory()->PPURead(a + 8);
 }
 
 void PPU::StoreTileData() {
@@ -353,6 +351,7 @@ void PPU::Tick() {
         if (nmi_.delay == 0 && nmi_.output && nmi_.occured)
             nes_->NMI();
     }
+
     if (mask_.showbg || mask_.showsprites) {
         if (f_ == 1 && scanline_ == 261 && cycle_ == 339) {
             cycle_ = 0;
@@ -363,6 +362,7 @@ void PPU::Tick() {
             return;
         }
     }
+
 
     cycle_++;
     if (cycle_ > 340) {

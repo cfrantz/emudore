@@ -25,7 +25,11 @@
  * https://github.com/radare/radare2
  */
 
+#ifndef USE_NEWCPU
 #include "src/cpu.h"
+#else
+#include "src/cpu2.h"
+#endif
 #include "src/memory.h"
 
 #include <vector>

@@ -7,7 +7,7 @@
 
 class Controller {
   public:
-    Controller(NES* nes);
+    Controller(NES* nes, int cnum);
     uint8_t Read();
     void Write(uint8_t val);
     inline uint8_t buttons() { return buttons_; }
@@ -29,6 +29,8 @@ class Controller {
     uint8_t buttons_;
     int index_, strobe_;
     std::vector<uint8_t> movie_;
+    bool got_read_;
+    int cnum_;
 };
 
 

@@ -26,7 +26,7 @@
 #include <utility>
 #include <unordered_map>
 
-#include "src/cpu.h"
+//#include "src/cpu.h"
 #include "src/util.h"
 
 /**
@@ -40,7 +40,7 @@
 class IO
 {
   private:
-    Cpu *cpu_;
+//    Cpu *cpu_;
     SDL_Window *window_;
     SDL_Renderer *renderer_;
     SDL_Texture *texture_;
@@ -76,7 +76,7 @@ class IO
     IO(size_t cols, size_t rows, double refresh_rate);
     ~IO();
     bool emulate();
-    void cpu(Cpu *v){cpu_=v;};
+//    void cpu(Cpu *v){cpu_=v;};
     void init_color_palette();
     void init_keyboard();
     void init_controllers(std::function<void(SDL_Event*)> callback);
