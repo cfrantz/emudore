@@ -15,7 +15,9 @@ class Noise {
     void set_period(uint8_t val);
     void set_length(uint8_t val);
     inline uint16_t length() const { return length_value_; }
+    void DebugStuff();
   private:
+    uint8_t InternalOutput();
     bool enabled_;
     bool mode_;
 
@@ -35,6 +37,13 @@ class Noise {
     uint8_t envelope_volume_;
 
     uint8_t constant_volume_;
+
+    struct {
+        uint8_t control, period, length;
+    } reg_;
+    const static int DBGBUFSZ = 1024;
+    float dbgbuf_[DBGBUFSZ];
+    int dbgp_;
 };
 
 #endif // EMUDORE_SRC_NES_APU_NOISE_H

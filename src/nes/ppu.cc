@@ -1,4 +1,8 @@
 #include <tuple>
+#include "imgui.h"
+#include <SDL2/SDL_opengl.h>
+
+#include "src/nes/cartridge.h"
 #include "src/nes/fm2.h"
 #include "src/nes/ppu.h"
 #include "src/nes/mem.h"
@@ -294,7 +298,7 @@ uint32_t PPU::FetchSpritePattern(int i, int row) {
             tile++; row -= 8;
         }
     }
-    
+
     addr = 0x1000 * table + tile * 16 + row;
     uint8_t a = (attr & 3) << 2;
     uint8_t lo = nes_->memory()->PPURead(addr);
@@ -431,3 +435,179 @@ void PPU::Emulate() {
     }
 }
 
+void PPU::TileMemImage(uint32_t* imgbuf, uint16_t addr, int palette,
+                       uint8_t* prefcolor) {
+    uint32_t pal[] = { 0xFF000000, 0xFF666666, 0xFFAAAAAA, 0xFFFFFFFF };
+    uint8_t pcol[4];
+    int tile = 0;
+
+    if (palette != -1) {
+        for(int c=0; c<4; c++) {
+            pal[c] = nes_->palette(nes_->memory()->PaletteRead(palette*4+c));
+        }
+    }
+
+    for(int y=0; y<16; y++) {
+        for(int x=0; x<16; x++, tile++) {
+            memset(&pcol, 0, sizeof(pcol));
+            for(int row=0; row<8; row++) {
+                uint8_t a = nes_->memory()->PPURead(addr + 16 * tile + row);
+                uint8_t b = nes_->memory()->PPURead(addr + 16 * tile + 8 + row);
+                for(int col=0; col<8; col++, a<<=1, b<<=1) {
+                    int color = ((a & 0x80) >> 7) | ((b & 0x80) >> 6);
+                    pcol[color]++;
+                    imgbuf[128*(8*y + row) + 8*x + col] = pal[color];
+                }
+            }
+            if (pcol[3]>=pcol[1] && pcol[3]>=pcol[2] && pcol[3]>=pcol[0]) {
+                prefcolor[tile] = 3;
+            } else if (pcol[2]>=pcol[1] && pcol[2]>=pcol[0] && pcol[2]>=pcol[3]) {
+                prefcolor[tile] = 2;
+            } else if (pcol[1]>=pcol[0] && pcol[1]>=pcol[2] && pcol[1]>=pcol[3]) {
+                prefcolor[tile] = 1;
+            } else {
+                prefcolor[tile] = 0;
+            }
+        }
+    }
+}
+
+void MakeTexture(GLuint* tid, int x, int y, void* data) {
+    glEnable(GL_TEXTURE_2D);
+    glGenTextures(1, tid);
+    glBindTexture(GL_TEXTURE_2D, *tid);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                 x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+}
+
+void UpdateTexture(GLuint tid, int x, int y, void* data) {
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, tid);
+    glTexSubImage2D(GL_TEXTURE_2D, 0,
+                    0, 0, x, y,
+                    GL_RGBA, GL_UNSIGNED_BYTE, data);
+}
+
+void PPU::DebugStuff() {
+    static bool display_tiledata, display_vram;
+    static uint32_t bank[2][128*128];
+    static GLuint bank_tid[2];
+    static char palette_names[8][16];
+    static char palette_colors[8][4][4];
+    static uint8_t prefcolor[2][256];
+    static int psel[2];
+    static bool once;
+
+    if (!once) {
+        MakeTexture(&bank_tid[0], 128, 128, bank[0]);
+        MakeTexture(&bank_tid[1], 128, 128, bank[1]);
+        for(int i=0; i<4; i++) {
+            sprintf(palette_names[i],   "Background %d", i);
+            sprintf(palette_names[i+4], "    Sprite %d", i);
+        }
+        once = true;
+    }
+
+    if (ImGui::Button("NameTables")) display_vram = !display_vram;
+    if (ImGui::Button("TileData")) display_tiledata = !display_tiledata;
+
+    if (display_tiledata) {
+        ImGui::Begin("Tile Data", &display_tiledata);
+        for(int b=0; b<2; b++) {
+            ImGui::PushID(b);
+            TileMemImage(bank[b], b*0x1000, psel[b], prefcolor[b]);
+            UpdateTexture(bank_tid[b], 128, 128, bank[b]);
+            ImGui::BeginGroup();
+            ImGui::Text(" ");
+            float y = ImGui::GetCursorPosY();
+            for(int i=0; i<16; i++) {
+                ImGui::SetCursorPosY(y+i*32);
+                ImGui::Text("%x0", i);
+            }
+            ImGui::SetCursorPosY(y);
+            ImGui::EndGroup();
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            ImGui::Text(" ");
+            float x = ImGui::GetCursorPosX();
+            for(int i=0; i<16; i++) {
+                ImGui::SameLine(x + i * 32 + 8);
+                ImGui::Text("%02x", i);
+            }
+            ImGui::SetCursorPosY(y);
+            ImGui::Image(ImTextureID(uintptr_t(bank_tid[b])), ImVec2(512, 512));
+            ImGui::EndGroup();
+
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            ImGui::Text(" ");
+            ImGui::RadioButton("None", &psel[b], -1);
+            for(int p=0; p<8; p++) {
+                ImGui::RadioButton(palette_names[p], &psel[b], p);
+                for(int c=0; c<4; c++) {
+                    ImGui::SameLine();
+                    uint8_t pval = nes_->memory()->PaletteRead(p*4+c);
+                    ImGui::PushStyleColor(ImGuiCol_Button,
+                                          ImColor(nes_->palette(pval)));
+                    sprintf(palette_colors[p][c], "%02x", pval);
+                    ImGui::Button(palette_colors[p][c]);
+                    ImGui::PopStyleColor(1);
+                }
+            }
+            ImGui::EndGroup();
+            ImGui::PopID();
+        }
+        ImGui::End();
+    }
+
+    if (display_vram) {
+        DebugVram(&display_vram, prefcolor);
+    }
+}
+
+void PPU::DebugVram(bool* active, uint8_t prefcolor[2][256]) {
+    if (!*active)
+        return;
+
+    ImGui::Begin("Name Tables", active);
+    int mm = int(nes_->cartridge()->mirror());
+
+    auto dump = [=](uint16_t v) {
+        ImGui::BeginGroup();
+        for(int y=0; y<30; y++) {
+            for(int x=0; x<32; x++, v++) {
+                uint8_t val = nes_->memory()->PPURead(v);
+
+                uint16_t a = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 7);
+                uint8_t shift = ((v >> 4) & 4) | (v & 2);
+                uint8_t attr = ((nes_->memory()->PPURead(a) >> shift) & 3) << 2;
+                uint8_t pval = nes_->memory()->PaletteRead(
+                        attr + prefcolor[control_.bgtable][val]);
+                if (x == 0) {
+                    ImGui::Text(" %04x:", v);
+                    ImGui::SameLine();
+                } else {
+                    ImGui::SameLine();
+                }
+                ImGui::TextColored(ImColor(nes_->palette(pval)), "%02x", val);
+            }
+        }
+        ImGui::EndGroup();
+    };
+
+    if (mm == 0) {
+        dump(0x2000);
+        dump(0x2800);
+    } else if (mm == 1) {
+        dump(0x2000);
+        ImGui::SameLine();
+        dump(0x2400);
+    } else {
+        fprintf(stderr, "Unknown mirror mode %d", mm);
+    }
+    ImGui::End();
+}

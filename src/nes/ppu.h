@@ -14,6 +14,7 @@ class PPU {
     inline uint64_t frame() const { return frame_; }
     inline int scanline() const { return scanline_; }
     inline int cycle() const { return cycle_; }
+    void DebugStuff();
   private:
     void NmiChange();
     void set_control(uint8_t val);
@@ -107,6 +108,9 @@ class PPU {
     uint8_t buffered_data_;
 
     uint32_t picture_[256*240];
+
+    void TileMemImage(uint32_t* imgbuf, uint16_t addr, int palette, uint8_t *prefcolor);
+    void DebugVram(bool* active, uint8_t prefcolor[2][256]);
 };
 
 #endif // EMUDORE_SRC_NES_PPU_H

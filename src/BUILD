@@ -43,6 +43,7 @@ cc_library(
         ":gamecontrollerdb",
         ":util",
         "//external:gflags",
+        "//external:imgui",
     ],
 )
 

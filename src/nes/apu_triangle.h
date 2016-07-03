@@ -16,7 +16,9 @@ class Triangle {
     void set_timer_low(uint8_t val);
     void set_timer_high(uint8_t val);
     inline uint16_t length() const { return length_value_; }
+    void DebugStuff();
   private:
+    uint8_t InternalOutput();
     bool enabled_;
 
     bool length_enabled_;
@@ -30,6 +32,13 @@ class Triangle {
     bool counter_reload_;
     uint8_t counter_period_;
     uint8_t counter_value_;
+
+    struct {
+        uint8_t control, tlo, thi;
+    } reg_;
+    const static int DBGBUFSZ = 1024;
+    float dbgbuf_[DBGBUFSZ];
+    int dbgp_;
 };
 
 #endif // EMUDORE_SRC_NES_APU_TRIANGLE_H

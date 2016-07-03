@@ -27,6 +27,7 @@ class APU {
     void SignalIRQ();
     float Output();
     void Emulate();
+    void DebugStuff();
 
     static const int BUFFERLEN = 4096;
   private:

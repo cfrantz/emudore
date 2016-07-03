@@ -19,6 +19,7 @@ cc_library(
     deps = [
         ":nes-interface",
         ":mem-interface",
+        "//external:imgui",
     ],
 )
 
@@ -41,6 +42,15 @@ cc_library(
 )
 
 cc_library(
+    name = "debug_console",
+    hdrs = ["debug_console.h"],
+    srcs = ["debug_console.cc"],
+    deps = [
+        "//external:imgui",
+    ],
+)
+
+cc_library(
     name = "fm2",
     srcs = ["fm2.cc"],
     hdrs = ["fm2.h"],
@@ -54,6 +64,7 @@ cc_library(
     name = "nes-interface",
     hdrs = ["nes.h"],
     deps = [
+        ":debug_console",
         "//src:io",
     ],
 )
@@ -101,6 +112,7 @@ cc_library(
         ":mem-interface",
         ":nes-interface",
         ":ppu",
+        "//external:imgui",
     ],
 )
 
@@ -119,10 +131,12 @@ cc_library(
         ":mem",
         ":nes-interface",
         ":ppu",
+        ":debug_console",
         "//src/sdlutil:gfx",
         "//src:cpu2",
         "//src:debugger",
         "//src:io",
+        "//external:imgui",
     ],
 )
 
@@ -131,10 +145,12 @@ cc_library(
     srcs = ["ppu.cc"],
     hdrs = ["ppu.h"],
     deps = [
+        ":cartridge",
         ":fm2",
         ":mem-interface",
         ":nes-interface",
         "//src:io",
+        "//external:imgui",
     ],
 )
 

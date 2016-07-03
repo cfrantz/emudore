@@ -18,7 +18,9 @@ class Pulse {
     void set_timer_low(uint8_t val);
     void set_timer_high(uint8_t val);
     inline uint16_t length() const { return length_value_; }
+    void DebugStuff();
   private:
+    uint8_t InternalOutput();
     bool enabled_;
     uint8_t channel_;
 
@@ -46,6 +48,13 @@ class Pulse {
     uint8_t envelope_volume_;
 
     uint8_t constant_volume_;
+
+    struct {
+        uint8_t control, sweep, tlo, thi;
+    } reg_;
+    const static int DBGBUFSZ = 1024;
+    float dbgbuf_[DBGBUFSZ];
+    int dbgp_;
 };
 
 #endif // EMUDORE_SRC_NES_APU_PULSE_H

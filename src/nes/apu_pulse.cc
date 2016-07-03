@@ -1,3 +1,4 @@
+#include "imgui.h"
 #include "src/nes/apu_pulse.h"
 
 #include <cstdint>
@@ -31,7 +32,7 @@ Pulse::Pulse(uint8_t channel)
     envelope_period_(0), envelope_value_(0), envelope_volume_(0),
     constant_volume_(0) {}
 
-uint8_t Pulse::Output() {
+uint8_t Pulse::InternalOutput() {
     if (!enabled_) return 0;
     if (length_value_ == 0) return 0;
     if (duty_table[duty_mode_][duty_value_] == 0) return 0;
@@ -39,6 +40,26 @@ uint8_t Pulse::Output() {
 
     if (envelope_enable_) return envelope_volume_;
     return constant_volume_;
+}
+
+uint8_t Pulse::Output() {
+    uint8_t val = InternalOutput();
+    dbgbuf_[dbgp_] = val;
+    dbgp_ = (dbgp_ + 1) % DBGBUFSZ;
+    return val;
+}
+
+void Pulse::DebugStuff() {
+    ImGui::BeginGroup();
+    ImGui::PlotLines("", dbgbuf_, DBGBUFSZ, dbgp_, "Pulse", 0.0f, 15.0f, ImVec2(0,80));
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::Text("Enabled %s", enabled_ ? "true" : "false");
+    ImGui::Text("control: %02x", reg_.control);
+    ImGui::Text("sweep:   %02x", reg_.sweep);
+    ImGui::Text("timer:   %02x%02x", reg_.thi, reg_.tlo);
+    ImGui::EndGroup();
+    ImGui::EndGroup();
 }
 
 void Pulse::Sweep() {
@@ -105,6 +126,7 @@ void Pulse::set_enabled(bool val) {
 }
 
 void Pulse::set_control(uint8_t val) {
+    reg_.control = val;
     duty_mode_ = (val >> 6) & 3;
     length_enabled_ = !(val & 0x20);
     envelope_loop_ = !!(val & 0x20);
@@ -115,6 +137,7 @@ void Pulse::set_control(uint8_t val) {
 }
 
 void Pulse::set_sweep(uint8_t val) {
+    reg_.sweep = val;
     sweep_enable_ = !!(val & 0x80);
     sweep_period_ = (val >> 4) & 0x07;
     sweep_negate_ = !!(val & 0x08);
@@ -123,10 +146,12 @@ void Pulse::set_sweep(uint8_t val) {
 }
 
 void Pulse::set_timer_low(uint8_t val) {
+    reg_.tlo = val;
     timer_period_ = (timer_period_ & 0xFF00) | val;
 }
 
 void Pulse::set_timer_high(uint8_t val) {
+    reg_.thi = val;
     length_value_ = length_table[val >> 3];
     timer_period_ = (timer_period_ & 0x00FF) | (uint16_t(val & 0x07) << 8);
     envelope_start_ = true;

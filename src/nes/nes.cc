@@ -1,5 +1,6 @@
 #include <string.h>
 #include <gflags/gflags.h>
+#include "imgui.h"
 
 #include "src/nes/nes.h"
 
@@ -9,6 +10,7 @@
 #include "src/nes/apu.h"
 #include "src/nes/cartridge.h"
 #include "src/nes/controller.h"
+#include "src/nes/debug_console.h"
 #include "src/nes/fm2.h"
 #include "src/nes/mapper.h"
 #include "src/nes/mem.h"
@@ -69,7 +71,36 @@ NES::NES() :
     debugger_->cpu(cpu_);
     debugger_->memory(mem_);
     cpu_->memory(mem_);
-    memcpy(palette_, standard_palette, sizeof(palette_));
+    for(size_t i=0; i<sizeof(palette_)/sizeof(palette_[0]); i++) {
+        palette_[i] = (standard_palette[i] & 0xFF00FF00) |
+                      ((standard_palette[i] >> 16 ) & 0xFF) |
+                      ((standard_palette[i] & 0xFF) << 16);
+    }
+
+    console_.RegisterCommand("db", "Hexdump bytes", [=](int argc, char **argv){
+        this->HexdumpBytes(argc, argv);
+    });
+    console_.RegisterCommand("wb", "Write bytes", [=](int argc, char **argv){
+        this->WriteBytes(argc, argv);
+    });
+    console_.RegisterCommand("dw", "Hexdump words", [=](int argc, char **argv){
+        this->HexdumpWords(argc, argv);
+    });
+    console_.RegisterCommand("ww", "Write words", [=](int argc, char **argv){
+        this->WriteBytes(argc, argv);
+    });
+    console_.RegisterCommand("nail", "Nail byte value", [=](int argc, char **argv){
+        this->NailByte(argc, argv);
+    });
+    console_.RegisterCommand("unnail", "Cancel a nailed byte", [=](int argc, char **argv){
+        this->UnnailByte(argc, argv);
+    });
+    console_.RegisterCommand("mm", "Print mirror mode", [=](int argc, char **argv){
+        console_.AddLog("mirror: %d", this->cart_->mirror());
+    });
+    console_.RegisterCommand("abort", "Quit Immediatelyt", [=](int argc, char **argv){
+        abort();
+    });
 }
 
 void NES::LoadFile(const std::string& filename) {
@@ -80,29 +111,76 @@ void NES::LoadFile(const std::string& filename) {
     }
 }
 
-void NES::DebugStuff(SDL_Renderer* r) {
-    if (!debug_)
+void NES::DebugPalette(bool* active) {
+    int i, x, y;;
+    static ImVec4 pal[64];
+    static char label[64][16];
+    static bool once;
+
+    if (!*active)
         return;
 
-    int x0=4, y0 = 4;
-    uint8_t b = controller_[0]->buttons();
-    uint32_t wh = 0xFFFFFFFF, gr = 0xFF808080;
-    sdlutil::GFX g(r);
+    if (!once) {
+        for(i=0; i<64; i++) {
+            uint8_t b = palette_[i] >> 16;
+            uint8_t g = palette_[i] >> 8;
+            uint8_t r = palette_[i] >> 0;
+            pal[i] = ImColor(r, g, b);
+            sprintf(label[i], "Edit Color %02x", i);
+        }
+        once = true;
+    }
 
-    g.Box(x0-4, y0-4, 128+8, 24+8, 0x80800000);
-    g.Rectangle(x0-4, y0-4, 128+8, 24+8, wh);
-    g.String(x0+8, y0+0, "U", (b & Controller::BUTTON_UP) ? wh : gr);
-    g.String(x0+0, y0+8, "L", (b & Controller::BUTTON_LEFT) ? wh : gr);
-    g.String(x0+16, y0+8, "R", (b & Controller::BUTTON_RIGHT) ? wh : gr);
-    g.String(x0+8, y0+16, "D", (b & Controller::BUTTON_DOWN) ? wh : gr);
-    g.String(x0+32, y0+8, "Sel", (b & Controller::BUTTON_SELECT) ? wh : gr);
-    g.String(x0+64, y0+8, "Sta", (b & Controller::BUTTON_START) ? wh : gr);
-    g.String(x0+96, y0+8, "B", (b & Controller::BUTTON_B) ? wh : gr);
-    g.String(x0+112, y0+8, "A", (b & Controller::BUTTON_A) ? wh : gr);
+    ImGui::Begin("Hardware Palette", active);
+    ImGui::Text("Right click to edit colors");
+    for(x=0; x<16; x++) {
+        if (x) {
+            ImGui::SameLine();
+        }
+        ImGui::BeginGroup();
+        ImGui::Text(x==0 ? "   %02x" : "%02x", x);
+        for(y=0; y<4; y++) {
+            if (x == 0) {
+                ImGui::Text("%x0", y);
+                ImGui::SameLine();
+            }
+            i = y*16+x;
+            ImGui::ColorButton(pal[i]);
+            if (ImGui::BeginPopupContextItem(label[i])) {
+                ImGui::Text("Edit color");
+                ImGui::ColorEdit3("##edit", (float*)&pal[i]);
+                if (ImGui::Button("Close"))
+                    ImGui::CloseCurrentPopup();
+                ImGui::EndPopup();
+                palette_[i] = 0xFF000000 |
+                    int(255*pal[i].z)<<16 |
+                    int(255*pal[i].y)<<8 |
+                    int(255*pal[i].x) ;
+            }
 
-    char buf[32];
-    int n = sprintf(buf, "F: %" PRIu64 "/%d", ppu_->frame(), frame_);
-    g.String(x0+128-n*8, y0+16, buf, wh);
+        }
+        ImGui::EndGroup();
+    }
+    ImGui::End();
+}
+
+void NES::DebugStuff(SDL_Renderer* r) {
+    static bool palette_editor, debug_console;
+
+    ImGui::Text("Frame: %d", int(ppu_->frame()));
+    if (ImGui::Button("Palette Editor")) palette_editor = !palette_editor;
+    if (ImGui::Button("Debug Console")) debug_console = !debug_console;
+
+    DebugPalette(&palette_editor);
+    if (debug_console) {
+        console_.Draw("Debug Console", &debug_console);
+    }
+    mem_->DebugStuff();
+    apu_->DebugStuff();
+    ppu_->DebugStuff();
+
+    for(const auto& n : nailed_)
+        mem_->Write(n.first, n.second);
 }
 
 void NES::HandleKeyboard(SDL_Event *event) {
@@ -157,7 +235,7 @@ nesreset:
                 continue;
             step_ = false;
         }
-        
+
         if (stall_ == 0) {
             cpu_->emulate();
             c1 = cpu_->cycles();
@@ -191,4 +269,141 @@ void NES::IRQ() {
 
 void NES::NMI() {
     cpu_->nmi();
+}
+
+void NES::HexdumpBytes(int argc, char **argv) {
+    if (argc != 3) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr> <length>", argv[0]);
+        return;
+    }
+
+    uint16_t addr = strtoul(argv[1], 0, 0);
+    int len = strtoul(argv[2], 0, 0);
+
+    char line[128], chr[17];
+    int i, n;
+    uint8_t val;
+
+    for(i=n=0; i < len; i++) {
+        val = mem_->read_byte_no_io(addr+i);
+        if (i % 16 == 0) {
+            if (i) {
+                n += sprintf(line+n, "  %s", chr);
+                console_.AddLog("%s", line);
+            }
+            n = sprintf(line, "%04x: ", addr+i);
+            memset(chr, 0, sizeof(chr));
+        }
+        n += sprintf(line+n, " %02x", val);
+        chr[i%16] = (val>=32 && val<127) ? val : '.';
+    }
+    if (i % 16) {
+        i = 3*(16 - i%16);
+    } else {
+        i = 0;
+    }
+    n += sprintf(line+n, " %*c%s", i, ' ', chr);
+    console_.AddLog("%s", line);
+}
+
+void NES::WriteBytes(int argc, char **argv) {
+    if (argc < 3) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr> <val> ...", argv[0]);
+        return;
+    }
+
+    uint16_t addr = strtoul(argv[1], 0, 0);
+    for(int i=2; i<argc; i++) {
+        uint8_t val = strtoul(argv[i], 0, 0);
+        mem_->Write(addr++, val);
+    }
+}
+
+
+void NES::HexdumpWords(int argc, char **argv) {
+    if (argc != 3) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr> <length>", argv[0]);
+        return;
+    }
+
+    uint16_t addr = strtoul(argv[1], 0, 0);
+    int len = strtoul(argv[2], 0, 0) * 2;
+
+    char line[128], chr[17];
+    int i, n;
+    uint8_t val;
+
+    for(i=n=0; i < len; i+=2) {
+        if (i % 16 == 0) {
+            if (i) {
+                n += sprintf(line+n, "  %s", chr);
+                console_.AddLog("%s", line);
+            }
+            n = sprintf(line, "%04x: ", addr+i);
+            memset(chr, 0, sizeof(chr));
+        }
+        val = mem_->read_byte_no_io(addr+i+1);
+        n += sprintf(line+n, " %02x", val);
+        chr[i%16] = (val>=32 && val<127) ? val : '.';
+
+        val = mem_->read_byte_no_io(addr+i);
+        n += sprintf(line+n, "%02x", val);
+        chr[(i+1)%16] = (val>=32 && val<127) ? val : '.';
+    }
+    if (i % 16) {
+        i = 3*(16 - i%16);
+    } else {
+        i = 0;
+    }
+    n += sprintf(line+n, " %*c%s", i, ' ', chr);
+    console_.AddLog("%s", line);
+}
+
+void NES::WriteWords(int argc, char **argv) {
+    if (argc < 3) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr> <val> ...", argv[0]);
+        return;
+    }
+
+    uint16_t addr = strtoul(argv[1], 0, 0);
+    for(int i=2; i<argc; i++) {
+        uint16_t val = strtoul(argv[i], 0, 0);
+        mem_->Write(addr++, val);
+        mem_->Write(addr++, val>>8);
+    }
+}
+
+void NES::NailByte(int argc, char **argv) {
+    if (argc < 3) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr> <val> ...", argv[0]);
+        for(const auto& n : nailed_)
+            console_.AddLog("  %04x: %02x", n.first, n.second);
+        return;
+    }
+
+    uint16_t addr = strtoul(argv[1], 0, 0);
+    for(int i=2; i<argc; i++) {
+        uint8_t val = strtoul(argv[i], 0, 0);
+        nailed_[addr++] = val;
+    }
+}
+
+void NES::UnnailByte(int argc, char **argv) {
+    if (argc < 2) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr> ...", argv[0]);
+        for(const auto& n : nailed_)
+            console_.AddLog("  %04x: %02x", n.first, n.second);
+        return;
+    }
+
+    for(int i=1; i<argc; i++) {
+        uint16_t addr = strtoul(argv[i], 0, 0);
+        nailed_.erase(addr);
+    }
 }

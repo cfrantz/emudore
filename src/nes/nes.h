@@ -1,8 +1,10 @@
 #ifndef EMUDORE_SRC_NES_NES_H
 #define EMUDORE_SRC_NES_NES_H
 #include <string>
+#include <map>
 #include <SDL2/SDL.h>
 #include "src/io.h"
+#include "src/nes/debug_console.h"
 
 class APU;
 class Cpu;
@@ -45,6 +47,7 @@ class NES {
     static constexpr double sample_rate = frequency / 44100.0;
   private:
     void DebugStuff(SDL_Renderer* r);
+    void DebugPalette(bool* active);
     void HandleKeyboard(SDL_Event* event);
     APU* apu_;
     Cpu *cpu_;
@@ -61,6 +64,16 @@ class NES {
     bool pause_, step_, debug_, reset_;
     int stall_;
     int frame_;
+
+    DebugConsole console_;
+    std::map<uint16_t, uint8_t> nailed_;
+    void HexdumpBytes(int argc, char **argv);
+    void HexdumpWords(int argc, char **argv);
+    void WriteBytes(int argc, char **argv);
+    void WriteWords(int argc, char **argv);
+
+    void NailByte(int argc, char **argv);
+    void UnnailByte(int argc, char **argv);
 };
 
 #endif // EMUDORE_SRC_NES_NES_H

@@ -9,3 +9,15 @@ bind(
     name = "gflags",
     actual = "@gflags_git//:gflags",
 )
+
+new_git_repository(
+    name = "imgui_git",
+    tag = "v1.49",
+    remote = "https://github.com/ocornut/imgui.git",
+    build_file = "imgui.BUILD",
+)
+
+bind(
+    name = "imgui",
+    actual = "@imgui_git//:imgui",
+)

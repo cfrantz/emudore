@@ -19,7 +19,9 @@ class DMC {
     void set_length(uint8_t val);
     inline uint16_t length() const { return current_length_; }
     void restart();
+    void DebugStuff();
   private:
+    uint8_t InternalOutput();
     NES* nes_;
     bool enabled_;
     uint8_t value_;
@@ -36,6 +38,12 @@ class DMC {
 
     bool loop_;
     bool irq_;
+    struct {
+        uint8_t control, value, address, length;
+    } reg_;
+    const static int DBGBUFSZ = 1024;
+    float dbgbuf_[DBGBUFSZ];
+    int dbgp_;
 };
 
 #endif // EMUDORE_SRC_NES_APU_DMC_H

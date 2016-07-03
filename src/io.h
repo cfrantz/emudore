@@ -19,6 +19,7 @@
 #define EMUDORE_IO_H
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
 #include <queue>
 #include <chrono>
 #include <thread>
@@ -26,6 +27,7 @@
 #include <utility>
 #include <unordered_map>
 
+#include "imgui.h"
 //#include "src/cpu.h"
 #include "src/util.h"
 
@@ -45,6 +47,8 @@ class IO
     SDL_Renderer *renderer_;
     SDL_Texture *texture_;
     SDL_PixelFormat *format_;
+    SDL_GLContext glcontext_;
+    GLuint nesimg_;
 
     std::function<void(uint8_t*, int)> audio_callback_;
     std::function<void(SDL_Event*)> controller_callback_;
@@ -53,6 +57,7 @@ class IO
     uint32_t *frame_;
     size_t cols_;
     size_t rows_;
+    float scale_;
     double refresh_rate_;
     unsigned int color_palette[16];
     uint8_t keyboard_matrix_[8];
@@ -71,7 +76,25 @@ class IO
     /* vertical refresh sync */
     std::chrono::high_resolution_clock::time_point prev_frame_was_at_;
     void vsync();
+    bool ProcessEvent(SDL_Event* event);
     static void AudioCallback(void* userdata, uint8_t* stream, int len);
+
+    // ImGui Stuff
+    bool mousebutton_[3];
+    float mousewheel_;
+    double time_;
+    GLuint fonttexture_;
+    ImVec4 clear_color_;
+
+
+    void ImGuiInit();
+    void CreateDeviceObjects();
+    void InvalidateDeviceObjects();
+    void NewFrame();
+    static void RenderDrawLists(ImDrawData* draw_data);
+    static void SetClipboardText(const char *text);
+    static const char* GetClipboardText();
+
   public:
     IO(size_t cols, size_t rows, double refresh_rate);
     ~IO();

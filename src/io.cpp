@@ -19,6 +19,7 @@
 #include <sched.h>
 #include <gflags/gflags.h>
 
+#include "imgui.h"
 #include "src/io.h"
 #include "src/gamecontrollerdb.h"
 
@@ -28,11 +29,20 @@ DEFINE_double(scale, 1.0, "Resolution scale factor.\n");
 // clas ctor and dtor //////////////////////////////////////////////////////////
 
 IO::IO(size_t cols, size_t rows, double refresh_rate)
-    : cols_(cols), rows_(rows), refresh_rate_(refresh_rate)
+    : cols_(cols), rows_(rows), scale_(FLAGS_scale), refresh_rate_(refresh_rate)
 {
-  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO
-           | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER
-           );
+  SDL_Init(SDL_INIT_VIDEO |
+           SDL_INIT_AUDIO |
+           SDL_INIT_TIMER |
+           SDL_INIT_JOYSTICK |
+           SDL_INIT_GAMECONTROLLER);
+
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+
   /**
    * We create the window double the original pixel size, 
    * the renderer takes care of upscaling 
@@ -41,10 +51,12 @@ IO::IO(size_t cols, size_t rows, double refresh_rate)
         "emudore",
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        cols_ * FLAGS_scale,
-        rows_ * FLAGS_scale,
-        SDL_WINDOW_OPENGL
-  );
+        cols_ * scale_,
+        rows_ * scale_,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+
+  glcontext_ = SDL_GL_CreateContext(window_);
+
   /* use a single texture and hardware acceleration */
   renderer_ = SDL_CreateRenderer(window_, -1, SDL_RENDERER_ACCELERATED);
   texture_  = SDL_CreateTexture(renderer_,
@@ -77,11 +89,23 @@ IO::IO(size_t cols, size_t rows, double refresh_rate)
       handle_keyup(event->key.keysym.scancode);
     }
   };
+
+  glEnable(GL_TEXTURE_2D);
+  glGenTextures(1, &nesimg_);
+  glBindTexture(GL_TEXTURE_2D, nesimg_);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cols_, rows_, 0, GL_RGBA, GL_UNSIGNED_BYTE, frame_);
+
+  ImGuiInit();
 }
 
 IO::~IO()
 {
   delete [] frame_;
+  InvalidateDeviceObjects();
   SDL_DestroyRenderer(renderer_);
   SDL_DestroyTexture(texture_);
   SDL_FreeFormat(format_);
@@ -246,31 +270,17 @@ void IO::init_color_palette()
 
 bool IO::emulate()
 {
-  bool retval = true;
   SDL_Event event;
-  /* don't be greedy, just process one event per emulation cycle */
-  if(SDL_PollEvent(&event))
-  {
-    switch(event.type)
-    {
-    case SDL_KEYDOWN:
-    case SDL_KEYUP:
-      keyboard_callback_(&event);
-      break;
-    case SDL_QUIT:
-      retval = false;
-      break;
-    case SDL_CONTROLLERDEVICEADDED:
-    case SDL_CONTROLLERDEVICEREMOVED:
-    case SDL_CONTROLLERDEVICEREMAPPED:
-    case SDL_CONTROLLERBUTTONDOWN:
-    case SDL_CONTROLLERBUTTONUP:
-    case SDL_CONTROLLERAXISMOTION:
-      controller_callback_(&event);
-      break;
-    }
+
+  while(SDL_PollEvent(&event)) {
+      ProcessEvent(&event);
+      if (event.type == SDL_QUIT)
+          return false;
   }
+  return true;
+
 #if 0
+  // FIXME(cfrantz): WTF to do here?
   /* process fake keystrokes if any */
   if(!key_event_queue_.empty() && 
      cpu_->cycles() > next_key_event_at_)
@@ -289,7 +299,6 @@ bool IO::emulate()
     next_key_event_at_ = cpu_->cycles() + kWait;
   }
 #endif
-  return retval;
 }
 
 // keyboard handling /////////////////////////////////////////////////////////// 
@@ -364,11 +373,35 @@ void IO::screen_blit(uint32_t* data) {
  */
 void IO::screen_refresh()
 {
-  SDL_UpdateTexture(texture_, NULL, frame_, cols_ * sizeof(uint32_t));
-  SDL_RenderClear(renderer_);
-  SDL_RenderCopy(renderer_,texture_, NULL, NULL);
+  ImGuiIO& io = ImGui::GetIO();
+  glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0.0f, io.DisplaySize.x, io.DisplaySize.y, 0.0f, -1.0f, +1.0f);
+  glClearColor(clear_color_.x, clear_color_.y, clear_color_.z, clear_color_.w);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, nesimg_);
+  glTexSubImage2D(GL_TEXTURE_2D, 0,
+                  0, 0, cols_, rows_,
+                  GL_RGBA, GL_UNSIGNED_BYTE, frame_);
+
+  glBegin(GL_QUADS);
+  glTexCoord2f(0, 0); glVertex2f(0, 0);
+  glTexCoord2f(1, 0); glVertex2f(cols_ * scale_, 0);
+  glTexCoord2f(1, 1); glVertex2f(cols_ * scale_, rows_ * scale_);
+  glTexCoord2f(0, 1); glVertex2f(0, rows_ * scale_);
+  glEnd();
+
+  NewFrame();
+  ImGui::SliderFloat("Zoom", &scale_, 0.0f, 6.0f);
+  ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
+  ImGui::Text("Fps: %.1f", io.Framerate);
   refresh_callback_(renderer_);
-  SDL_RenderPresent(renderer_);
+  ImGui::Render();
+
+  SDL_GL_SwapWindow(window_);
   //vsync();
 }
 
@@ -472,4 +505,253 @@ void IO::init_controllers(std::function<void(SDL_Event*)> callback) {
 
 void IO::yield() {
     sched_yield();
+}
+
+
+void IO::ImGuiInit() {
+    ImGuiIO& io = ImGui::GetIO();
+
+    mousewheel_ = 0;
+    fonttexture_ = 0;
+    time_ = 0;
+    mousebutton_[0] = false;
+    mousebutton_[1] = false;
+    mousebutton_[2] = false;
+
+    clear_color_ = ImColor(114, 144, 154);
+
+    // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array.
+    io.KeyMap[ImGuiKey_Tab] = SDLK_TAB;
+    io.KeyMap[ImGuiKey_LeftArrow] = SDL_SCANCODE_LEFT;
+    io.KeyMap[ImGuiKey_RightArrow] = SDL_SCANCODE_RIGHT;
+    io.KeyMap[ImGuiKey_UpArrow] = SDL_SCANCODE_UP;
+    io.KeyMap[ImGuiKey_DownArrow] = SDL_SCANCODE_DOWN;
+    io.KeyMap[ImGuiKey_PageUp] = SDL_SCANCODE_PAGEUP;
+    io.KeyMap[ImGuiKey_PageDown] = SDL_SCANCODE_PAGEDOWN;
+    io.KeyMap[ImGuiKey_Home] = SDL_SCANCODE_HOME;
+    io.KeyMap[ImGuiKey_End] = SDL_SCANCODE_END;
+    io.KeyMap[ImGuiKey_Delete] = SDLK_DELETE;
+    io.KeyMap[ImGuiKey_Backspace] = SDLK_BACKSPACE;
+    io.KeyMap[ImGuiKey_Enter] = SDLK_RETURN;
+    io.KeyMap[ImGuiKey_Escape] = SDLK_ESCAPE;
+    io.KeyMap[ImGuiKey_A] = SDLK_a;
+    io.KeyMap[ImGuiKey_C] = SDLK_c;
+    io.KeyMap[ImGuiKey_V] = SDLK_v;
+    io.KeyMap[ImGuiKey_X] = SDLK_x;
+    io.KeyMap[ImGuiKey_Y] = SDLK_y;
+    io.KeyMap[ImGuiKey_Z] = SDLK_z;
+
+    io.RenderDrawListsFn = RenderDrawLists;
+    io.SetClipboardTextFn = SetClipboardText;
+    io.GetClipboardTextFn = GetClipboardText;
+
+    //CreateDeviceObjects();
+}
+
+void IO::CreateDeviceObjects() {
+    static int once = 0;
+    if (once)
+        return;
+    once++;
+    // Build texture atlas
+    ImGuiIO& io = ImGui::GetIO();
+    unsigned char* pixels;
+    int width, height;
+    io.Fonts->GetTexDataAsAlpha8(&pixels, &width, &height);
+
+    // Upload texture to graphics system
+    GLint last_texture;
+    glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
+    glGenTextures(1, &fonttexture_);
+    glBindTexture(GL_TEXTURE_2D, fonttexture_);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, width, height, 0, GL_ALPHA,
+            GL_UNSIGNED_BYTE, pixels);
+
+    // Store our identifier
+    io.Fonts->TexID = (void *)(intptr_t)fonttexture_;
+
+    // Restore state
+    glBindTexture(GL_TEXTURE_2D, last_texture);
+}
+
+void IO::InvalidateDeviceObjects() {
+    if (fonttexture_) {
+        glDeleteTextures(1, &fonttexture_);
+        ImGui::GetIO().Fonts->TexID = 0;
+        fonttexture_ = 0;
+    }
+}
+
+void IO::SetClipboardText(const char *text) {
+    SDL_SetClipboardText(text);
+}
+
+const char* IO::GetClipboardText() {
+    return SDL_GetClipboardText();
+}
+
+void IO::RenderDrawLists(ImDrawData* draw_data) {
+    // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
+    ImGuiIO& io = ImGui::GetIO();
+    int fb_width = (int)(io.DisplaySize.x * io.DisplayFramebufferScale.x);
+    int fb_height = (int)(io.DisplaySize.y * io.DisplayFramebufferScale.y);
+    if (fb_width == 0 || fb_height == 0)
+        return;
+    draw_data->ScaleClipRects(io.DisplayFramebufferScale);
+
+    // We are using the OpenGL fixed pipeline to make the example code simpler to read!
+    // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, vertex/texcoord/color pointers.
+    GLint last_texture; glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
+    GLint last_viewport[4]; glGetIntegerv(GL_VIEWPORT, last_viewport);
+    glPushAttrib(GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_TRANSFORM_BIT);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDisable(GL_CULL_FACE);
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_SCISSOR_TEST);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glEnable(GL_TEXTURE_2D);
+    //glUseProgram(0); // You may want this if using this code in an OpenGL 3+ context
+
+    // Setup viewport, orthographic projection matrix
+    glViewport(0, 0, (GLsizei)fb_width, (GLsizei)fb_height);
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    glOrtho(0.0f, io.DisplaySize.x, io.DisplaySize.y, 0.0f, -1.0f, +1.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    // Render command lists
+    #define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
+    for (int n = 0; n < draw_data->CmdListsCount; n++)
+    {
+        const ImDrawList* cmd_list = draw_data->CmdLists[n];
+        const unsigned char* vtx_buffer = (const unsigned char*)&cmd_list->VtxBuffer.front();
+        const ImDrawIdx* idx_buffer = &cmd_list->IdxBuffer.front();
+        glVertexPointer(2, GL_FLOAT, sizeof(ImDrawVert), (void*)(vtx_buffer + OFFSETOF(ImDrawVert, pos)));
+        glTexCoordPointer(2, GL_FLOAT, sizeof(ImDrawVert), (void*)(vtx_buffer + OFFSETOF(ImDrawVert, uv)));
+        glColorPointer(4, GL_UNSIGNED_BYTE, sizeof(ImDrawVert), (void*)(vtx_buffer + OFFSETOF(ImDrawVert, col)));
+
+        for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.size(); cmd_i++)
+        {
+            const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
+            if (pcmd->UserCallback)
+            {
+                pcmd->UserCallback(cmd_list, pcmd);
+            }
+            else
+            {
+                glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)pcmd->TextureId);
+                glScissor((int)pcmd->ClipRect.x, (int)(fb_height - pcmd->ClipRect.w), (int)(pcmd->ClipRect.z - pcmd->ClipRect.x), (int)(pcmd->ClipRect.w - pcmd->ClipRect.y));
+                glDrawElements(GL_TRIANGLES, (GLsizei)pcmd->ElemCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, idx_buffer);
+            }
+            idx_buffer += pcmd->ElemCount;
+        }
+    }
+    #undef OFFSETOF
+
+    // Restore modified state
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glBindTexture(GL_TEXTURE_2D, (GLuint)last_texture);
+    glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glPopAttrib();
+    glViewport(last_viewport[0], last_viewport[1], (GLsizei)last_viewport[2], (GLsizei)last_viewport[3]);
+}
+
+
+void IO::NewFrame() {
+    CreateDeviceObjects();
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Setup display size (every frame to accommodate for window resizing)
+    int w, h;
+    int display_w, display_h;
+    SDL_GetWindowSize(window_, &w, &h);
+    SDL_GL_GetDrawableSize(window_, &display_w, &display_h);
+    io.DisplaySize = ImVec2((float)w, (float)h);
+    io.DisplayFramebufferScale = ImVec2(w > 0 ? ((float)display_w / w) : 0, h > 0 ? ((float)display_h / h) : 0);
+
+    // Setup time step
+    Uint32	time = SDL_GetTicks();
+    double current_time = time / 1000.0;
+    io.DeltaTime = time_ > 0.0 ? (float)(current_time - time_) : (float)(1.0f/60.0f);
+    time_ = current_time;
+
+    // Setup inputs
+    // (we already got mouse wheel, keyboard keys & characters from SDL_PollEvent())
+    int mx, my;
+    Uint32 mouseMask = SDL_GetMouseState(&mx, &my);
+    if (SDL_GetWindowFlags(window_) & SDL_WINDOW_MOUSE_FOCUS)
+        io.MousePos = ImVec2((float)mx, (float)my);   // Mouse position, in pixels (set to -1,-1 if no mouse / on another screen, etc.)
+    else
+        io.MousePos = ImVec2(-1,-1);
+
+    io.MouseDown[0] = mousebutton_[0] || (mouseMask & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;		// If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
+    io.MouseDown[1] = mousebutton_[1] || (mouseMask & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
+    io.MouseDown[2] = mousebutton_[2] || (mouseMask & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;
+    mousebutton_[0] = mousebutton_[1] = mousebutton_[2] = false;
+
+    io.MouseWheel = mousewheel_;;
+    mousewheel_ = 0.0f;
+
+    // Hide OS mouse cursor if ImGui is drawing it
+    SDL_ShowCursor(io.MouseDrawCursor ? 0 : 1);
+
+    // Start the frame
+    ImGui::NewFrame();
+}
+
+
+
+bool IO::ProcessEvent(SDL_Event* event) {
+    ImGuiIO& io = ImGui::GetIO();
+    int key;
+
+    switch(event->type) {
+    case SDL_MOUSEWHEEL:
+        if (event->wheel.y > 0)
+            mousewheel_ = 1;
+        if (event->wheel.y < 0)
+            mousewheel_ = -1;
+        return true;
+    case SDL_MOUSEBUTTONDOWN:
+        if (event->button.button == SDL_BUTTON_LEFT) mousebutton_[0] = true;
+        if (event->button.button == SDL_BUTTON_RIGHT) mousebutton_[1] = true;
+        if (event->button.button == SDL_BUTTON_MIDDLE) mousebutton_[2] = true;
+        return true;
+    case SDL_TEXTINPUT:
+        io.AddInputCharactersUTF8(event->text.text);
+        return true;
+    case SDL_KEYDOWN:
+    case SDL_KEYUP:
+        key = event->key.keysym.sym & ~SDLK_SCANCODE_MASK;
+        io.KeysDown[key] = (event->type == SDL_KEYDOWN);
+        io.KeyShift = ((SDL_GetModState() & KMOD_SHIFT) != 0);
+        io.KeyCtrl =  ((SDL_GetModState() & KMOD_CTRL) != 0);
+        io.KeyAlt =   ((SDL_GetModState() & KMOD_ALT) != 0);
+        io.KeySuper = ((SDL_GetModState() & KMOD_GUI) != 0);
+        keyboard_callback_(event);
+        return true;
+    case SDL_CONTROLLERDEVICEADDED:
+    case SDL_CONTROLLERDEVICEREMOVED:
+    case SDL_CONTROLLERDEVICEREMAPPED:
+    case SDL_CONTROLLERBUTTONDOWN:
+    case SDL_CONTROLLERBUTTONUP:
+    case SDL_CONTROLLERAXISMOTION:
+        controller_callback_(event);
+        return true;
+
+    }
+    return false;
 }

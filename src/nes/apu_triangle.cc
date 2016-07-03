@@ -1,3 +1,4 @@
+#include "imgui.h"
 #include "src/nes/apu_triangle.h"
 
 static uint8_t length_table[32] = {
@@ -20,11 +21,30 @@ Triangle::Triangle()
     counter_period_(0), counter_value_(0)
 {}
 
-uint8_t Triangle::Output() {
+uint8_t Triangle::InternalOutput() {
     if (!enabled_) return 0;
     if (length_value_ == 0) return 0;
     if (counter_value_ == 0) return 0;
     return triangle_table[duty_value_];
+}
+
+uint8_t Triangle::Output() {
+    uint8_t val = InternalOutput();
+    dbgbuf_[dbgp_] = val;
+    dbgp_ = (dbgp_ + 1) % DBGBUFSZ;
+    return val;
+}
+
+void Triangle::DebugStuff() {
+    ImGui::BeginGroup();
+    ImGui::PlotLines("", dbgbuf_, DBGBUFSZ, dbgp_, "Triangle", 0.0f, 15.0f, ImVec2(0,80));
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::Text("Enabled %s", enabled_ ? "true" : "false");
+    ImGui::Text("control: %02x", reg_.control);
+    ImGui::Text("timer:   %02x%02x", reg_.thi, reg_.tlo);
+    ImGui::EndGroup();
+    ImGui::EndGroup();
 }
 
 void Triangle::StepTimer() {
@@ -59,15 +79,18 @@ void Triangle::set_enabled(bool val) {
 }
 
 void Triangle::set_control(uint8_t val) {
+    reg_.control = val;
     length_enabled_ = !(val & 0x80);
     counter_period_ = val & 0x7f;
 }
 
 void Triangle::set_timer_low(uint8_t val) {
+    reg_.tlo = val;
     timer_period_ = (timer_period_ & 0xFF00) | val;
 }
 
 void Triangle::set_timer_high(uint8_t val) {
+    reg_.thi = val;
     length_value_ = length_table[val >> 3];
     timer_period_ = (timer_period_ & 0x00FF) | (uint16_t(val & 0x07) << 8);
     timer_value_ = timer_period_;

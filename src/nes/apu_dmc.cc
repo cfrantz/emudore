@@ -1,3 +1,4 @@
+#include "imgui.h"
 #include "src/nes/apu_dmc.h"
 #include "src/nes/mem.h"
 
@@ -15,7 +16,23 @@ DMC::DMC(NES* nes) :
     loop_(0), irq_(0) {}
 
 uint8_t DMC::Output() {
+    dbgbuf_[dbgp_] = value_;
+    dbgp_ = (dbgp_ + 1) % DBGBUFSZ;
     return value_;
+}
+
+void DMC::DebugStuff() {
+    ImGui::BeginGroup();
+    ImGui::PlotLines("", dbgbuf_, DBGBUFSZ, dbgp_, "DMC", 0.0f, 127.0f, ImVec2(0,80));
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::Text("Enabled %s", enabled_ ? "true" : "false");
+    ImGui::Text("control: %02x", reg_.control);
+    ImGui::Text("value:   %02x", reg_.value);
+    ImGui::Text("address: %02x", reg_.address);
+    ImGui::Text("length:  %02x", reg_.length);
+    ImGui::EndGroup();
+    ImGui::EndGroup();
 }
 
 void DMC::StepReader() {
@@ -67,20 +84,24 @@ void DMC::set_enabled(bool val) {
 }
 
 void DMC::set_control(uint8_t val) {
+    reg_.control = val;
     irq_ = !!(val & 0x80);
     loop_ = !!(val & 0x40);
     tick_period_ = dmc_table[val & 0x0f];
 }
 
 void DMC::set_value(uint8_t val) {
+    reg_.value = val;
     value_ = val & 0x7f;
 }
 
 void DMC::set_address(uint8_t val) {
+    reg_.address = val;
     sample_address_ = 0xC000 | (uint16_t(val) << 6);
 }
 
 void DMC::set_length(uint8_t val) {
+    reg_.length = val;
     sample_length_ = (uint16_t(val) << 4) | 1;
 }
 

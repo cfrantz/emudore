@@ -1,5 +1,7 @@
 #ifndef EMUDORE_SRC_NES_MEM_H
 #define EMUDORE_SRC_NES_MEM_H
+#include <string>
+#include <vector>
 
 #include "src/memory.h"
 #include "src/nes/nes.h"
@@ -24,13 +26,19 @@ class Mem: public Memory {
     void PPUWrite(uint16_t addr, uint8_t val);
     uint8_t PaletteRead(uint16_t addr);
     void PaletteWrite(uint16_t addr, uint8_t val);
+    void DebugStuff();
   private:
     uint16_t MirrorAddress(int mode, uint16_t addr);
+    void HexDump(int addr, int len);
+    bool ReadMemDump();
+    void MemDump();
 
     NES* nes_;
     uint8_t ram_[2048];
     uint8_t ppuram_[2048];
     uint8_t palette_[32];
+
+    std::vector<std::string> custom_memdump_;
 };
 
 #endif // EMUDORE_SRC_NES_MEM_H

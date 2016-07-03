@@ -1,3 +1,4 @@
+#include "imgui.h"
 #include "src/nes/apu_noise.h"
 
 static uint8_t length_table[32] = {
@@ -20,12 +21,32 @@ Noise::Noise()
     envelope_period_(0), envelope_value_(0), envelope_volume_(0),
     constant_volume_(0) {}
 
-uint8_t Noise::Output() {
+uint8_t Noise::InternalOutput() {
     if (!enabled_) return 0;
     if (length_value_ == 0) return 0;
     if (shift_register_ & 1) return 0;
     if (envelope_enable_) return envelope_volume_;
     return constant_volume_;
+}
+
+uint8_t Noise::Output() {
+    uint8_t val = InternalOutput();
+    dbgbuf_[dbgp_] = val;
+    dbgp_ = (dbgp_ + 1) % DBGBUFSZ;
+    return val;
+}
+
+void Noise::DebugStuff() {
+    ImGui::BeginGroup();
+    ImGui::PlotLines("", dbgbuf_, DBGBUFSZ, dbgp_, "Noise", 0.0f, 15.0f, ImVec2(0,80));
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::Text("Enabled %s", enabled_ ? "true" : "false");
+    ImGui::Text("control: %02x", reg_.control);
+    ImGui::Text("period:  %02x", reg_.period);
+    ImGui::Text("length:  %02x", reg_.length);
+    ImGui::EndGroup();
+    ImGui::EndGroup();
 }
 
 void Noise::StepTimer() {
@@ -70,6 +91,7 @@ void Noise::set_enabled(bool val) {
 }
 
 void Noise::set_control(uint8_t val) {
+    reg_.control = val;
     length_enabled_ = !(val & 0x20);
     envelope_loop_ = !!(val & 0x20);
     envelope_enable_ = !(val & 0x10);
@@ -79,11 +101,13 @@ void Noise::set_control(uint8_t val) {
 }
 
 void Noise::set_period(uint8_t val) {
+    reg_.period = val;
     mode_ = !!(val & 0x80);
     timer_period_ = noise_table[val & 0x0f];
 }
 
 void Noise::set_length(uint8_t val) {
+    reg_.length = val;
     length_value_ = length_table[val >> 3];
     envelope_start_ = true;
 }
