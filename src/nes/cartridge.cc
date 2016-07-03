@@ -81,19 +81,3 @@ void Cartridge::PrintHeader() {
     printf("  Has trainer: %d\n", header_.trainer);
     printf("  Mapper: %d\n", mapper());
 }
-
-uint8_t Cartridge::ReadPrg(uint32_t addr) {
-    return prg_[addr];
-}
-uint8_t Cartridge::ReadChr(uint32_t addr) {
-    return chr_[addr];
-}
-void Cartridge::WriteChr(uint32_t addr, uint8_t val) {
-    chr_[addr] = val;
-}
-uint8_t Cartridge::ReadSram(uint32_t addr) {
-    return sram_[addr];
-}
-void Cartridge::WriteSram(uint32_t addr, uint8_t val) {
-    sram_[addr] = val;
-}

@@ -45,11 +45,15 @@ class Cartridge {
     inline uint32_t prglen() const { return prglen_; }
     inline uint32_t chrlen() const { return chrlen_; }
 
-    uint8_t ReadPrg(uint32_t addr);
-    uint8_t ReadChr(uint32_t addr);
-    void WriteChr(uint32_t addr, uint8_t val);
-    uint8_t ReadSram(uint32_t addr);
-    void WriteSram(uint32_t addr, uint8_t val);
+    inline uint8_t ReadPrg(uint32_t addr) { return prg_[addr]; }
+    inline uint8_t ReadChr(uint32_t addr) { return chr_[addr]; }
+    inline uint8_t ReadSram(uint32_t addr) { return sram_[addr]; }
+    inline void WritePrg(uint32_t addr, uint8_t val) { prg_[addr] = val; }
+    inline void WriteChr(uint32_t addr, uint8_t val) { chr_[addr] = val; }
+    inline void WriteSram(uint32_t addr, uint8_t val) { sram_[addr] = val; }
+
+
+
 
   private:
     NES* nes_;

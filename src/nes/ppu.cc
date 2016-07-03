@@ -511,9 +511,14 @@ void PPU::DebugStuff() {
         }
         once = true;
     }
-
-    if (ImGui::Button("NameTables")) display_vram = !display_vram;
-    if (ImGui::Button("TileData")) display_tiledata = !display_tiledata;
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Video")) {
+            ImGui::MenuItem("Nametables", nullptr, &display_vram);
+            ImGui::MenuItem("Tile Data", nullptr, &display_tiledata);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
 
     if (display_tiledata) {
         ImGui::Begin("Tile Data", &display_tiledata);

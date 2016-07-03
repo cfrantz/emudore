@@ -373,6 +373,7 @@ void IO::screen_blit(uint32_t* data) {
  */
 void IO::screen_refresh()
 {
+  static bool open = true;
   ImGuiIO& io = ImGui::GetIO();
   glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
   glMatrixMode(GL_PROJECTION);
@@ -395,10 +396,13 @@ void IO::screen_refresh()
   glEnd();
 
   NewFrame();
-  ImGui::SliderFloat("Zoom", &scale_, 0.0f, 6.0f);
-  ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
-  ImGui::Text("Fps: %.1f", io.Framerate);
-  refresh_callback_(renderer_);
+  if (ImGui::Begin("MyDebug", &open, ImGuiWindowFlags_MenuBar)) {
+    ImGui::SliderFloat("Zoom", &scale_, 0.0f, 6.0f);
+    ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
+    ImGui::Text("Fps: %.1f", io.Framerate);
+    refresh_callback_(renderer_);
+  }
+  ImGui::End();
   ImGui::Render();
 
   SDL_GL_SwapWindow(window_);

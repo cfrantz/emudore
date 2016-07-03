@@ -83,6 +83,12 @@ NES::NES() :
     console_.RegisterCommand("wb", "Write bytes", [=](int argc, char **argv){
         this->WriteBytes(argc, argv);
     });
+    console_.RegisterCommand("wc", "Write CHR memory", [=](int argc, char **argv){
+        this->WriteBytes(argc, argv);
+    });
+    console_.RegisterCommand("wp", "Write PRG memory", [=](int argc, char **argv){
+        this->WriteBytes(argc, argv);
+    });
     console_.RegisterCommand("dw", "Hexdump words", [=](int argc, char **argv){
         this->HexdumpWords(argc, argv);
     });
@@ -168,8 +174,17 @@ void NES::DebugStuff(SDL_Renderer* r) {
     static bool palette_editor, debug_console;
 
     ImGui::Text("Frame: %d", int(ppu_->frame()));
-    if (ImGui::Button("Palette Editor")) palette_editor = !palette_editor;
-    if (ImGui::Button("Debug Console")) debug_console = !debug_console;
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Console")) {
+            ImGui::MenuItem("Palette Editor", nullptr, &palette_editor);
+            ImGui::MenuItem("Debug Console", nullptr, &debug_console);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+//    if (ImGui::Button("Palette Editor")) palette_editor = !palette_editor;
+//    if (ImGui::Button("Debug Console")) debug_console = !debug_console;
 
     DebugPalette(&palette_editor);
     if (debug_console) {
@@ -179,8 +194,7 @@ void NES::DebugStuff(SDL_Renderer* r) {
     apu_->DebugStuff();
     ppu_->DebugStuff();
 
-    for(const auto& n : nailed_)
-        mem_->Write(n.first, n.second);
+
 }
 
 void NES::HandleKeyboard(SDL_Event *event) {
@@ -246,6 +260,9 @@ nesreset:
             stall_ = 0;
         }
 
+        for(const auto& n : nailed_)
+            mem_->Write(n.first, n.second);
+
         pauseable = false;
         for(int i=0; i<n; i++) {
             // APU is clocked at the cpu speed (1.78 MHz)
@@ -272,14 +289,14 @@ void NES::NMI() {
 }
 
 void NES::HexdumpBytes(int argc, char **argv) {
-    if (argc != 3) {
+    if (argc < 2) {
         console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
         console_.AddLog("[error] %s <addr> <length>", argv[0]);
         return;
     }
 
     uint16_t addr = strtoul(argv[1], 0, 0);
-    int len = strtoul(argv[2], 0, 0);
+    int len = (argc == 3) ? strtoul(argv[2], 0, 0) : 64;
 
     char line[128], chr[17];
     int i, n;
@@ -317,20 +334,25 @@ void NES::WriteBytes(int argc, char **argv) {
     uint16_t addr = strtoul(argv[1], 0, 0);
     for(int i=2; i<argc; i++) {
         uint8_t val = strtoul(argv[i], 0, 0);
-        mem_->Write(addr++, val);
+        if (argv[0][1] == 'b')
+            mem_->Write(addr++, val);
+        else if (argv[0][1] == 'c')
+            cart_->WriteChr(addr++, val);
+        else if (argv[0][1] == 'p')
+            cart_->WritePrg(addr++, val);
     }
 }
 
 
 void NES::HexdumpWords(int argc, char **argv) {
-    if (argc != 3) {
+    if (argc < 2) {
         console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
         console_.AddLog("[error] %s <addr> <length>", argv[0]);
         return;
     }
 
     uint16_t addr = strtoul(argv[1], 0, 0);
-    int len = strtoul(argv[2], 0, 0) * 2;
+    int len = (argc == 3) ? strtoul(argv[2], 0, 0) : 64;
 
     char line[128], chr[17];
     int i, n;

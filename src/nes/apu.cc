@@ -106,7 +106,15 @@ float APU::Output() {
 void APU::DebugStuff() {
     static bool display_audio;
 
-    if (ImGui::Button("Audio")) display_audio = !display_audio;
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Audio")) {
+            ImGui::MenuItem("Waveforms", nullptr, &display_audio);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+
+    //if (ImGui::Button("Audio")) display_audio = !display_audio;
     if (display_audio) {
         ImGui::Begin("Audio", &display_audio);
         pulse_[0].DebugStuff();

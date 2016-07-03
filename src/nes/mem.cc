@@ -222,9 +222,15 @@ void Mem::MemDump() {
 
 void Mem::DebugStuff() {
     static bool display_hexdump, display_memdump;;
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("Memory")) {
+            ImGui::MenuItem("Hexdump", nullptr, &display_hexdump);
+            ImGui::MenuItem("Memdump", nullptr, &display_memdump);
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
 
-    if (ImGui::Button("Hexdump")) display_hexdump = !display_hexdump;
-    if (ImGui::Button("Memdump")) display_memdump = !display_memdump;
 
     if (display_hexdump) {
         ImGui::Begin("Memory Hexdump", &display_hexdump);
