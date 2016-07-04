@@ -133,30 +133,34 @@ void Mem::PaletteWrite(uint16_t addr, uint8_t val) {
 }
 
 void Mem::HexDump(int addr, int len) {
-    std::string ret;
-    char line[128], chr[17];
-    int i, n;
+    static const char hex[] = "0123456789abcdef";
+    char line[80];
+    char *b = line;
+    int i, c=55;
     uint8_t val;
 
-    for(i=n=0; i < len; i++) {
-        val = read_byte_no_io(addr+i);
+    for(i=0; i < len; i++) {
+        uint16_t a = addr + i;
+        val = read_byte_no_io(a);
         if (i % 16 == 0) {
             if (i) {
-                n += sprintf(line+n, "  %s", chr);
+                line[c] = '\0';
                 ImGui::Text("%s", line);
             }
-            n = sprintf(line, "%04x: ", addr+i);
-            memset(chr, 0, sizeof(chr));
+            memset(line, 32, sizeof(line));
+            b = line; c = 55;
+            *b++ = hex[(a>>12) & 0xf];
+            *b++ = hex[(a>>8) & 0xf];
+            *b++ = hex[(a>>4) & 0xf];
+            *b++ = hex[(a>>0) & 0xf];
+            *b++ = ':';
         }
-        n += sprintf(line+n, " %02x", val);
-        chr[i%16] = (val>=32 && val<127) ? val : '.';
+        b++;
+        *b++ = hex[(val>>4) & 0xf];
+        *b++ = hex[(val>>0) & 0xf];
+        line[c++] = (val>=32 && val<127) ? val : '.';
     }
-    if (i % 16) {
-        i = 3*(16 - i%16);
-    } else {
-        i = 0;
-    }
-    n += sprintf(line+n, " %*c%s", i, ' ', chr);
+    line[c] = '\0';
     ImGui::Text("%s", line);
 }
 
