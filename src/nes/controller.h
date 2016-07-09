@@ -15,6 +15,7 @@ class Controller {
     void set_buttons(SDL_Event* event);
     void AppendButtons(uint8_t b);
     void Emulate(int frame);
+    void DebugStuff();
 
     static const int BUTTON_A      = 0x01;
     static const int BUTTON_B      = 0x02;

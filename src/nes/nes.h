@@ -37,10 +37,15 @@ class NES {
     inline FM2Movie* movie() { return movie_; }
     inline PPU* ppu() { return ppu_; }
     inline uint32_t palette(uint8_t c) { return palette_[c % 64]; }
+    inline uint64_t frame() { return frame_; }
 
     int cpu_cycles();
     inline void yield() const { io_->yield(); }
     inline void Stall(int s) { stall_ += s; }
+
+    void Reset();
+    bool Emulate();
+    bool EmulateFrame();
 
     static const int frequency = 1789773;
     static constexpr double frame_counter_rate = frequency / 240.0;
@@ -63,7 +68,7 @@ class NES {
     uint32_t palette_[64];
     bool pause_, step_, debug_, reset_;
     int stall_;
-    int frame_;
+    uint64_t frame_;
 
     DebugConsole console_;
     std::map<uint16_t, uint8_t> nailed_;
@@ -74,6 +79,7 @@ class NES {
 
     void NailByte(int argc, char **argv);
     void UnnailByte(int argc, char **argv);
+    void Unassemble(int argc, char **argv);
 };
 
 #endif // EMUDORE_SRC_NES_NES_H

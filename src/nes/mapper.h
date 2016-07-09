@@ -27,7 +27,7 @@ class MapperRegistry {
 #define CONCAT(x, y) CONCAT_(x, y)
 
 #define REGISTER_MAPPER(n_, type_) \
-    MapperRegistry CONCAT(reg__, __LINE__) (n_, \
+    MapperRegistry CONCAT(CONCAT(CONCAT(reg_, type_), __), __LINE__) (n_, \
             [](NES* nes) { return new type_(nes); })
 
 #endif // EMUDORE_SRC_NES_MAPPER_H

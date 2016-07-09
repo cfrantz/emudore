@@ -5,6 +5,17 @@
 
 class PPU {
   public:
+    struct Mask {
+        uint8_t grayscale: 1;
+        uint8_t showleftbg: 1;
+        uint8_t showleftsprite: 1;
+        uint8_t showbg: 1;
+        uint8_t showsprites: 1;
+        uint8_t redtint: 1;
+        uint8_t greentint: 1;
+        uint8_t bluetint: 1;
+    };
+
     PPU(NES* nes);
     void Reset();
     uint8_t Read(uint16_t addr);
@@ -14,6 +25,7 @@ class PPU {
     inline uint64_t frame() const { return frame_; }
     inline int scanline() const { return scanline_; }
     inline int cycle() const { return cycle_; }
+    inline Mask mask() const { return mask_; }
     void DebugStuff();
   private:
     void NmiChange();
@@ -88,16 +100,7 @@ class PPU {
         uint8_t master: 1;
     } control_;
 
-    struct {
-        uint8_t grayscale: 1;
-        uint8_t showleftbg: 1;
-        uint8_t showleftsprite: 1;
-        uint8_t showbg: 1;
-        uint8_t showsprites: 1;
-        uint8_t redtint: 1;
-        uint8_t greentint: 1;
-        uint8_t bluetint: 1;
-    } mask_;
+    Mask mask_;
 
     struct {
         uint8_t sprite0_hit: 1;
@@ -111,6 +114,10 @@ class PPU {
 
     void TileMemImage(uint32_t* imgbuf, uint16_t addr, int palette, uint8_t *prefcolor);
     void DebugVram(bool* active, uint8_t prefcolor[2][256]);
+    struct Position { int x, y, nt; };
+    Position scrollreg_[262];
+    Position last_scrollreg_;
+
 };
 
 #endif // EMUDORE_SRC_NES_PPU_H

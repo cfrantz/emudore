@@ -48,6 +48,11 @@ void PPU::set_control(uint8_t val) {
     nmi_.output = val >> 7;
     NmiChange();
     t_ = (t_ & 0xF3FF) | (uint16_t(val & 3) << 10);
+
+    if (control_.nametable != last_scrollreg_.nt) {
+        scrollreg_[scanline_].nt = control_.nametable;
+        last_scrollreg_.nt = control_.nametable;
+    }
 }
 
 void PPU::set_mask(uint8_t val) {
@@ -72,10 +77,16 @@ void PPU::set_scroll(uint8_t val) {
         t_ = (t_ & 0xFFE0) | (val >> 3);
         x_ = val & 7;
         w_ = 1;
+
+        scrollreg_[scanline_].x = val;
+        last_scrollreg_.x = val;
     } else {
         t_ = (t_ & 0x8FFF) | (uint16_t(val & 0x07) << 12);
         t_ = (t_ & 0xFC1F) | (uint16_t(val & 0xF8) << 2);
         w_ = 0;
+
+        scrollreg_[scanline_].y = val;
+        last_scrollreg_.y = val;
     }
 }
 
@@ -178,7 +189,6 @@ void PPU::SetVerticalBlank() {
     nmi_.occured = true;
     NmiChange();
     nes_->io()->screen_blit(picture_);
-    nes_->io()->screen_refresh();
 }
 
 void PPU::ClearVerticalBlank() {
@@ -361,12 +371,10 @@ void PPU::Tick() {
             cycle_ = 0;
             scanline_ = 0;
             frame_++;
-            nes_->movie()->Emulate(frame_);
             f_ = f_ ^ 1;
             return;
         }
     }
-
 
     cycle_++;
     if (cycle_ > 340) {
@@ -375,7 +383,6 @@ void PPU::Tick() {
         if (scanline_ > 261) {
             scanline_ = 0;
             frame_++;
-            nes_->movie()->Emulate(frame_);
             f_ = f_ ^ 1;
         }
     }
@@ -426,13 +433,17 @@ void PPU::Emulate() {
         }
     }
 
-    if (scanline_ == 241 && cycle_ == 1)
+    if (scanline_ == 241 && cycle_ == 1) {
         SetVerticalBlank();
+        memset(scrollreg_, 0xff, sizeof(scrollreg_));
+    }
     if (pre_line && cycle_ == 1) {
         ClearVerticalBlank();
         status_.sprite0_hit = 0;
         status_.sprite_overflow = 0;
+        scrollreg_[0] = last_scrollreg_;
     }
+
 }
 
 void PPU::TileMemImage(uint32_t* imgbuf, uint16_t addr, int palette,
@@ -459,11 +470,11 @@ void PPU::TileMemImage(uint32_t* imgbuf, uint16_t addr, int palette,
                     imgbuf[128*(8*y + row) + 8*x + col] = pal[color];
                 }
             }
-            if (pcol[3]>=pcol[1] && pcol[3]>=pcol[2] && pcol[3]>=pcol[0]) {
+            if (pcol[3]>=pcol[1] && pcol[3]>=pcol[2] && pcol[3]>=pcol[0]/3) {
                 prefcolor[tile] = 3;
-            } else if (pcol[2]>=pcol[1] && pcol[2]>=pcol[0] && pcol[2]>=pcol[3]) {
+            } else if (pcol[2]>=pcol[1] && pcol[2]>=pcol[0]/3 && pcol[2]>=pcol[3]) {
                 prefcolor[tile] = 2;
-            } else if (pcol[1]>=pcol[0] && pcol[1]>=pcol[2] && pcol[1]>=pcol[3]) {
+            } else if (pcol[1]>=pcol[0]/3 && pcol[1]>=pcol[2] && pcol[1]>=pcol[3]) {
                 prefcolor[tile] = 1;
             } else {
                 prefcolor[tile] = 0;
@@ -575,13 +586,20 @@ void PPU::DebugStuff() {
 }
 
 void PPU::DebugVram(bool* active, uint8_t prefcolor[2][256]) {
+    static const char hex[] = "0123456789abcdef";
+    static Position pos[64][60];
+    static Position ntofs[4] = { {0,0}, {32,0}, {0,30}, {32,30} };
     if (!*active)
         return;
 
     ImGui::Begin("Name Tables", active);
-    int mm = int(nes_->cartridge()->mirror());
+    ImGui::Text("Video RAM:");
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     auto dump = [=](uint16_t v) {
+        char buf[8];
+        int xofs = (v & 0x400) ? 32 : 0;
+        int yofs = (v & 0x800) ? 30 : 0;
         ImGui::BeginGroup();
         for(int y=0; y<30; y++) {
             for(int x=0; x<32; x++, v++) {
@@ -593,26 +611,116 @@ void PPU::DebugVram(bool* active, uint8_t prefcolor[2][256]) {
                 uint8_t pval = nes_->memory()->PaletteRead(
                         attr + prefcolor[control_.bgtable][val]);
                 if (x == 0) {
-                    ImGui::Text(" %04x:", v);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security"
+                    //ImGui::Text(" %04x:", v);
+                    buf[0] = ' ';
+                    buf[1] = hex[(v>>12) & 0xf];
+                    buf[2] = hex[(v>>8) & 0xf];
+                    buf[3] = hex[(v>>4) & 0xf];
+                    buf[4] = hex[(v>>0) & 0xf];
+                    buf[5] = ':';
+                    buf[6] = 0;
+                    ImGui::Text(buf);
+#pragma GCC diagnostic pop
                     ImGui::SameLine();
                 } else {
                     ImGui::SameLine();
                 }
-                ImGui::TextColored(ImColor(nes_->palette(pval)), "%02x", val);
+                //pos[xofs+x][yofs+y].x = ImGui::GetCursorPosX();
+                //pos[xofs+x][yofs+y].y = ImGui::GetCursorPosY();
+                const ImVec2 p = ImGui::GetCursorScreenPos();
+                pos[xofs+x][yofs+y].x = p.x;
+                pos[xofs+x][yofs+y].y = p.y;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-security"
+                //ImGui::TextColored(ImColor(nes_->palette(pval)), "%02x", val);
+                buf[0] = hex[(val>>4) & 0xf];
+                buf[1] = hex[(val>>0) & 0xf];
+                buf[2] = 0;
+                ImGui::TextColored(ImColor(nes_->palette(pval)), buf);
+#pragma GCC diagnostic pop
             }
         }
         ImGui::EndGroup();
     };
 
-    if (mm == 0) {
-        dump(0x2000);
-        dump(0x2800);
-    } else if (mm == 1) {
-        dump(0x2000);
-        ImGui::SameLine();
-        dump(0x2400);
-    } else {
-        fprintf(stderr, "Unknown mirror mode %d", mm);
+    auto sprites = [=](int x0, int y0, int line, const Position* nt) {
+        char buf[8];
+        for(int i=0; i<256; i+=4) {
+            int y = oam_[i + 0];
+            if (y != line)
+                continue;
+            int t = oam_[i + 1];
+            int a = oam_[i + 2];
+            int x = oam_[i + 3] + x0;
+            int table;
+            int ysz;
+            if (control_.spritesize) {
+                table = t & 1;
+                t &= 0xFE;
+                ysz = 32;
+            } else {
+                table = control_.spritetable;
+                ysz = 16;
+            }
+            uint8_t pval = nes_->memory()->PaletteRead(
+                    0x10 + (a&3)*4 + prefcolor[table][t]);
+            int xp = pos[nt->x + x/8][nt->y + y/8].x + (x & 7) * 2;
+            int yp = pos[nt->x + x/8][nt->y + y/8].y + (y & 7) * 2;
+            draw_list->AddRectFilled(ImVec2(xp, yp), ImVec2(xp+16, yp + ysz),
+                         ImColor(nes_->palette(pval)));
+            buf[0] = hex[(t>>4) & 0xf];
+            buf[1] = hex[(t>>0) & 0xf];
+            buf[2] = 0;
+            draw_list->AddText(ImVec2(xp, yp), ImColor(0xFF000000), buf);
+        }
+    };
+
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(1, 1));
+    dump(0x2000);
+    ImGui::SameLine();
+    dump(0x2400);
+
+    dump(0x2800);
+    ImGui::SameLine();
+    dump(0x2c00);
+    ImGui::PopStyleVar();
+
+    const ImU32 col32 = ImColor(ImVec4(1.0f, 1.0f, 0.4f, 1.0f));
+    struct Position *nt = ntofs;
+    int lx=0, ly=0;
+    for(int i=0; i<240; i++) {
+        int x, y, xp, yp;
+        sprites(lx, ly, i, nt);
+        x = scrollreg_[i].x;
+        y = scrollreg_[i].y + i;
+        if (scrollreg_[i].nt >= 0) {
+            nt = ntofs + scrollreg_[i].nt;
+            if (x < 0) x = 0;
+            if (y < 0) y = i;
+        }
+        if (x < 0)
+            continue;
+        lx = x; ly = y;
+        ImGui::Text("%d: x=%d y=%d nt=%d", i, x, y, int(nt-ntofs));
+        xp = pos[nt->x + x/8][nt->y + y/8].x + (x & 7) * 2;
+        yp = pos[nt->x + x/8][nt->y + y/8].y + (y & 7) * 2;
+        ImVec2 ul = ImVec2(xp - 2, yp - 2);
+        x += 255; y++;
+        for(int j=i+1; j<240; j++, y++) {
+            if (scrollreg_[j].x >= 0 || scrollreg_[j].nt >= 0)
+                break;
+        }
+        xp = pos[nt->x + x/8][nt->y + y/8].x + (x & 7) * 2;
+        yp = pos[nt->x + x/8][nt->y + y/8].y + (y & 7) * 2;
+        ImVec2 lr = ImVec2(xp + 2, yp + 2);
+        int sz = 64;
+        draw_list->AddLine(ul, ImVec2(ul.x, ul.y+sz), col32, 2);
+        draw_list->AddLine(ul, ImVec2(ul.x+sz, ul.y), col32, 2);
+        draw_list->AddLine(ImVec2(lr.x, lr.y-sz), lr, col32, 2);
+        draw_list->AddLine(ImVec2(lr.x-sz, lr.y), lr, col32, 2);
     }
+
     ImGui::End();
 }

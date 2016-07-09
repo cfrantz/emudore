@@ -1,4 +1,5 @@
 #include <cstdint>
+#include "imgui.h"
 #include "src/nes/controller.h"
 
 Controller::Controller(NES* nes, int cnum) :
@@ -8,9 +9,7 @@ Controller::Controller(NES* nes, int cnum) :
     strobe_(0),
     movie_(0),
     got_read_(false),
-    cnum_(cnum)
-{
-}
+    cnum_(cnum) {}
 
 uint8_t Controller::Read() {
     uint8_t ret = 0;
@@ -25,8 +24,30 @@ uint8_t Controller::Read() {
 
 void Controller::Write(uint8_t val) {
     strobe_ = val;
-    if (strobe_ & 1)
+    if (strobe_ & 1) {
         index_ = 0;
+    }
+}
+
+void Controller::DebugStuff() {
+    auto on = ImColor(0xFFFFFFFF);
+    auto off = ImColor(0xFF808080);
+    ImGui::BeginGroup();
+    ImGui::Text("Controller %d", cnum_);
+    ImGui::TextColored((buttons_ & BUTTON_UP) ? on : off, " U");
+    ImGui::TextColored((buttons_ & BUTTON_LEFT) ? on : off, "L");
+    ImGui::SameLine();
+    ImGui::TextColored((buttons_ & BUTTON_RIGHT) ? on : off, "R");
+    ImGui::SameLine();
+    ImGui::TextColored((buttons_ & BUTTON_SELECT) ? on : off, "Sel");
+    ImGui::SameLine();
+    ImGui::TextColored((buttons_ & BUTTON_START) ? on : off, "Sta");
+    ImGui::SameLine();
+    ImGui::TextColored((buttons_ & BUTTON_B) ? on : off, " B");
+    ImGui::SameLine();
+    ImGui::TextColored((buttons_ & BUTTON_A) ? on : off, "A");
+    ImGui::TextColored((buttons_ & BUTTON_DOWN) ? on : off, " D");
+    ImGui::EndGroup();
 }
 
 void Controller::set_buttons(SDL_Event* event) {
@@ -114,6 +135,7 @@ void Controller::Emulate(int frame) {
         if (!got_read_ && cnum_ == 0) {
             printf("Missed controller read @ %d\n", frame-1);
         }
+        got_read_ = false;
 //        if (buttons_) {
 //            printf("Press %02x at %d\n", buttons_, frame);
 //        }

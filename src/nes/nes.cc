@@ -1,5 +1,6 @@
-#include <string.h>
+
 #include <gflags/gflags.h>
+#include <unistd.h>
 #include "imgui.h"
 
 #include "src/nes/nes.h"
@@ -18,6 +19,11 @@
 #include "src/sdlutil/gfx.h"
 
 DEFINE_string(fm2, "", "FM2 Movie file.");
+DEFINE_double(fps, 60.0988, "Desired NES fps.");
+double avg;
+#define FT_SAMPLES 100
+int64_t ft[FT_SAMPLES];
+int64_t fudge;
 
 const uint32_t standard_palette[] = {
     0xFF666666, 0xFF002A88, 0xFF1412A7, 0xFF3B00A4,
@@ -57,7 +63,7 @@ NES::NES() :
     mem_ = new Mem(this);
     movie_ = new FM2Movie(this);
     ppu_ = new PPU(this);
-    io_ = new IO(256, 240, 60.0988);
+    io_ = new IO(256, 240, FLAGS_fps);
 
     io_->init_audio(44100, 1, APU::BUFFERLEN/2, AUDIO_F32,
             [this](uint8_t* stream, int len) {
@@ -103,6 +109,12 @@ NES::NES() :
     });
     console_.RegisterCommand("mm", "Print mirror mode", [=](int argc, char **argv){
         console_.AddLog("mirror: %d", this->cart_->mirror());
+    });
+    console_.RegisterCommand("reset", "Reset console", [=](int argc, char **argv){
+        this->Reset();
+    });
+    console_.RegisterCommand("u", "Unassemble", [=](int argc, char **argv){
+        this->Unassemble(argc, argv);
     });
     console_.RegisterCommand("abort", "Quit Immediatelyt", [=](int argc, char **argv){
         abort();
@@ -174,6 +186,7 @@ void NES::DebugStuff(SDL_Renderer* r) {
     static bool palette_editor, debug_console;
 
     ImGui::Text("Frame: %d", int(ppu_->frame()));
+    ImGui::Text("Avg FPS: %.3f, diff=%.6f fudge=%d", avg, avg-FLAGS_fps, (int)fudge);
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Console")) {
             ImGui::MenuItem("Palette Editor", nullptr, &palette_editor);
@@ -183,9 +196,6 @@ void NES::DebugStuff(SDL_Renderer* r) {
         ImGui::EndMenuBar();
     }
 
-//    if (ImGui::Button("Palette Editor")) palette_editor = !palette_editor;
-//    if (ImGui::Button("Debug Console")) debug_console = !debug_console;
-
     DebugPalette(&palette_editor);
     if (debug_console) {
         console_.Draw("Debug Console", &debug_console);
@@ -193,8 +203,9 @@ void NES::DebugStuff(SDL_Renderer* r) {
     mem_->DebugStuff();
     apu_->DebugStuff();
     ppu_->DebugStuff();
-
-
+    controller_[0]->DebugStuff();
+    ImGui::SameLine();
+    controller_[1]->DebugStuff();
 }
 
 void NES::HandleKeyboard(SDL_Event *event) {
@@ -210,7 +221,7 @@ void NES::HandleKeyboard(SDL_Event *event) {
             debug_ = !debug_;
             break;
         case SDL_SCANCODE_F11:
-            reset_ = true;
+            Reset();
             break;
         default:
             ;
@@ -222,61 +233,90 @@ int NES::cpu_cycles() {
     return int(cpu_->cycles());
 }
 
-void NES::Run() {
-    int t=0;
-    int n;
-
-nesreset:
-    int c0 = 0, c1;
-    bool pauseable = false;
+void NES::Reset() {
     cpu_->reset();
     ppu_->Reset();
-    reset_ = false;
+}
 
-    for(t=0;;t++) {
-        if (!debugger_->emulate())
-            break;
+bool NES::Emulate() {
+    if (!debugger_->emulate())
+        return false;
 
-        if (t % 2000 == 0) {
-            if (!io_->emulate())
-                break;
+    const int n = cpu_->Emulate();
+    for(int i=0; i<n*3; i++) {
+        // The PPU is clocked at 3 dots per CPU clock
+        ppu_->Emulate();
+        mapper_->Emulate();
+    }
+    for(int i=0; i<n; i++) {
+        apu_->Emulate();
+    }
+    return true;
+}
+
+bool NES::EmulateFrame() {
+    frame_ = ppu_->frame();
+
+    movie_->Emulate(frame_);
+    while(frame_ == ppu_->frame()) {
+        for(const auto& n : nailed_)
+            mem_->Write(n.first, n.second);
+
+        if (!Emulate())
+            return false;
+    }
+    return true;
+}
+
+void NES::Run() {
+    Reset();
+    uint64_t t0, t0last, t1;;
+    int64_t ns;
+//        , fudge = 0;
+//    double avg;
+   
+    avg = FLAGS_fps;
+
+    t0 = io_->clock_nanos();
+    t0last = t0;
+    for(int n=1;;n++) {
+        io_->screen_refresh();
+
+        t1 = io_->clock_nanos();
+        ns = int64_t(1e9 / FLAGS_fps) - (t1 - t0) + fudge;
+        if (ns > 0) {
+            io_->sleep_nanos(ns);
         }
-        if (reset_)
-            goto nesreset;
+        t0 = io_->clock_nanos();
+        ft[n%FT_SAMPLES] = t0 - t0last;
+        t0last = t0;
 
-        if (pauseable && pause_) {
+        avg = 0;
+        for(int j=0; j<FT_SAMPLES; j++) {
+            avg += ft[j];
+        }
+        avg = 1e9 / (avg / double(FT_SAMPLES));
+
+        if (n>240) {
+            double f = 1e9 / FLAGS_fps;
+            fudge += (f * (avg - FLAGS_fps)/FLAGS_fps) * 0.01;
+            /*
+            if (fudge > 16638935) {
+                fudge = 16638935;
+            } else if (fudge < -16638935) {
+                fudge = -16638935;
+            }
+            */
+        }
+
+        if (!io_->emulate())
+            break;
+        if (pause_) {
             if (!step_)
                 continue;
             step_ = false;
         }
-
-        if (stall_ == 0) {
-            cpu_->emulate();
-            c1 = cpu_->cycles();
-            n = c1 - c0;
-            c0 = c1;
-        } else {
-            n = stall_;
-            stall_ = 0;
-        }
-
-        for(const auto& n : nailed_)
-            mem_->Write(n.first, n.second);
-
-        pauseable = false;
-        for(int i=0; i<n; i++) {
-            // APU is clocked at the cpu speed (1.78 MHz)
-            apu_->Emulate();
-            for(int j=0; j<3; j++) {
-                // The PPU is clocked at 3 dots per CPU clock
-                ppu_->Emulate();
-                mapper_->Emulate();
-
-                if (ppu_->scanline() == 261 && ppu_->cycle() == 1) {
-                    pauseable = true;
-                }
-            }
-        }
+        EmulateFrame();
     }
 }
 
@@ -427,5 +467,22 @@ void NES::UnnailByte(int argc, char **argv) {
     for(int i=1; i<argc; i++) {
         uint16_t addr = strtoul(argv[i], 0, 0);
         nailed_.erase(addr);
+    }
+}
+
+void NES::Unassemble(int argc, char **argv) {
+    static uint16_t addr = 0;
+
+    if (addr == 0) {
+        addr = mem_->read_word(0xFFFC);
+    }
+    if (argc >= 2) {
+        addr = strtoul(argv[1], 0, 0);
+    }
+
+    int len = (argc == 3) ? strtol(argv[2], 0, 0) : 10;
+    for(int i=0; i<len; i++) {
+        std::string s = cpu_->Disassemble(&addr);
+        console_.AddLog("%s", s.c_str());
     }
 }

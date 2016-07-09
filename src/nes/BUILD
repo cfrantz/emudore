@@ -93,10 +93,13 @@ cc_library(
     srcs = [
         "mapper1.cc",
         "mapper2.cc",
+        "mapper3.cc",
+        "mapper4.cc",
     ],
     deps = [
         ":mapper",
         ":cartridge",
+        ":ppu",
     ],
     alwayslink = 1,
 )
