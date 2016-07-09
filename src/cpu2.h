@@ -1,6 +1,7 @@
 #ifndef EMUDORE_SRC_CPU2_H
 #define EMUDORE_SRC_CPU2_H
 #include <cstdint>
+#include <string>
 #include "src/memory.h"
 
 class Cpu {
@@ -10,6 +11,8 @@ class Cpu {
 
     void Reset();
     int Emulate();
+    std::string Disassemble(uint16_t *nexti=nullptr);
+    std::string CpuState();
     inline void NMI() { nmi_pending_ = true; }
     inline void IRQ() { irq_pending_ = true; }
 
@@ -130,6 +133,7 @@ class Cpu {
     bool irq_pending_;
 
     static const InstructionInfo info_[256];
+    static const char* instruction_names_[256];
 };
 
 #endif // EMUDORE_SRC_CPU2_H

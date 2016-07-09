@@ -9,6 +9,7 @@
 //    Extra cycles when crossing a page boundary
 const Cpu::InstructionInfo Cpu::info_[256] = {
     // 0x00      1       2       3       4       5       6       7
+    //    8      9       a       b       c       d       e       f
     0x0715, 0x0626, 0x0205, 0x0806, 0x032a, 0x032a, 0x052a, 0x050a, 
     0x0315, 0x0224, 0x0213, 0x0204, 0x0430, 0x0430, 0x0630, 0x0600, 
     // 0x10
@@ -92,6 +93,62 @@ void Cpu::Reset() {
     stall_ = 0;
 }
 
+std::string Cpu::CpuState() {
+    char buf[80];
+    sprintf(buf, "PC=%04x A=%02x X=%02x Y=%02x SP=1%02x %c%c%c%c%c%c%c%c",
+            pc_, a_, x_, y_, sp_,
+            flags_.n ? 'N' : 'n',
+            flags_.v ? 'V' : 'v',
+            flags_.u ? 'U' : 'u',
+            flags_.b ? 'B' : 'b',
+            flags_.d ? 'D' : 'd',
+            flags_.i ? 'I' : 'i',
+            flags_.z ? 'Z' : 'z',
+            flags_.c ? 'C' : 'c');
+    return std::string(buf);
+}
+
+std::string Cpu::Disassemble(uint16_t* nexti) {
+    char buf[80];
+    uint16_t data = 0;
+    uint16_t pc = pc_;
+
+    if (nexti && *nexti)
+        pc = *nexti;
+
+    uint8_t opcode = Read(pc);
+    InstructionInfo info = info_[opcode];
+    int i;
+
+    switch(info.size) {
+    case 0:
+        // Illegal opcode
+        sprintf(buf, "%02x: %02x            %s",
+                pc, opcode, instruction_names_[opcode]);
+        pc++;
+        break;
+    case 1:
+        sprintf(buf, "%02x: %02x            %s",
+                pc, opcode, instruction_names_[opcode]);
+        break;
+    case 2:
+        data = Read(pc+1);
+        i = sprintf(buf, "%02x: %02x%02x          ", pc, opcode, data);
+        sprintf(buf+i, instruction_names_[opcode], data);
+        break;
+    case 3:
+        data = Read(pc+1) | Read(pc+2)<<8;
+        i = sprintf(buf, "%02x: %02x%02x%02x        ",
+                    pc, opcode, Read(pc+1), Read(pc+2));
+        sprintf(buf+i, instruction_names_[opcode], data);
+        break;
+    }
+    if (nexti) {
+        *nexti = pc + info.size;
+    }
+    return std::string(buf);
+}
+
 int Cpu::Emulate(void) {
     if (stall_ > 0) {
       stall_--;
@@ -150,7 +207,7 @@ int Cpu::Emulate(void) {
         break;
     }
 #endif
-    
+
     //printf("Decoding instruction at %04x -> %02x\n", pc_, opcode);
     // Based on the AddressingMode of the instruction, compute the address
     // target to be used by the instruction.
@@ -710,3 +767,261 @@ int Cpu::Emulate(void) {
     return cycles_ - cycles;
 }
 
+const char* Cpu::instruction_names_[] = {
+/* 00 */      "BRK",
+/* 01 */      "ORA ($%02x,X)",
+/* 02 */      "illop_02",
+/* 03 */      "illop_03",
+/* 04 */      "illop_04",
+/* 05 */      "ORA $%02x",
+/* 06 */      "ASL $%02x",
+/* 07 */      "illop_07",
+/* 08 */      "PHP",
+/* 09 */      "ORA #$%02x",
+/* 0a */      "ASL A",
+/* 0b */      "illop_0b",
+/* 0c */      "illop_0c",
+/* 0d */      "ORA $%04x",
+/* 0e */      "ASL $%04x",
+/* 0f */      "illop_0f",
+/* 10 */      "BPL $%02x",
+/* 11 */      "ORA ($%02x,Y)",
+/* 12 */      "illop_12",
+/* 13 */      "illop_13",
+/* 14 */      "illop_14",
+/* 15 */      "ORA $%02x,X",
+/* 16 */      "ASL $%02x,X",
+/* 17 */      "illop_17",
+/* 18 */      "CLC",
+/* 19 */      "ORA $%04x,Y",
+/* 1a */      "illop_1a",
+/* 1b */      "illop_1b",
+/* 1c */      "illop_1c",
+/* 1d */      "ORA $%04x,X",
+/* 1e */      "ASL $%04x,X",
+/* 1f */      "illop_1f",
+/* 20 */      "JSR $%04x",
+/* 21 */      "AND ($%02x,X)",
+/* 22 */      "illop_22",
+/* 23 */      "illop_23",
+/* 24 */      "BIT $%02x",
+/* 25 */      "AND $%02x",
+/* 26 */      "ROL $%02x",
+/* 27 */      "illop_27",
+/* 28 */      "PLP",
+/* 29 */      "AND #$%02x",
+/* 2a */      "ROL A",
+/* 2b */      "illop_2b",
+/* 2c */      "BIT $%04x",
+/* 2d */      "AND $%04x",
+/* 2e */      "ROL $%04x",
+/* 2f */      "illop_2f",
+/* 30 */      "BMI $%02x",
+/* 31 */      "AND ($%02x,Y)",
+/* 32 */      "illop_32",
+/* 33 */      "illop_33",
+/* 34 */      "illop_34",
+/* 35 */      "AND $%02x,X",
+/* 36 */      "ROL $%02x,X",
+/* 37 */      "illop_37",
+/* 38 */      "SEC",
+/* 39 */      "AND $%04x,Y",
+/* 3a */      "illop_3a",
+/* 3b */      "illop_3b",
+/* 3c */      "illop_3c",
+/* 3d */      "AND $%04x,X",
+/* 3e */      "ROL $%04x,X",
+/* 3f */      "illop_3f",
+/* 40 */      "RTI",
+/* 41 */      "EOR ($%02x,X)",
+/* 42 */      "illop_42",
+/* 43 */      "illop_43",
+/* 44 */      "illop_44",
+/* 45 */      "EOR $%02x",
+/* 46 */      "LSR $%02x",
+/* 47 */      "illop_47",
+/* 48 */      "PHA",
+/* 49 */      "EOR #$%02x",
+/* 4a */      "LSR A",
+/* 4b */      "illop_4b",
+/* 4c */      "JMP $%04x",
+/* 4d */      "EOR $%04x",
+/* 4e */      "LSR $%04x",
+/* 4f */      "illop_4f",
+/* 50 */      "BVC",
+/* 51 */      "EOR ($%02x,Y)",
+/* 52 */      "illop_52",
+/* 53 */      "illop_53",
+/* 54 */      "illop_54",
+/* 55 */      "EOR $%02x,X",
+/* 56 */      "LSR $%02x,X",
+/* 57 */      "illop_57",
+/* 58 */      "CLI",
+/* 59 */      "EOR $%04x,Y",
+/* 5a */      "illop_5a",
+/* 5b */      "illop_5b",
+/* 5c */      "illop_5c",
+/* 5d */      "EOR $%04x,X",
+/* 5e */      "LSR $%04x,X",
+/* 5f */      "illop_5f",
+/* 60 */      "RTS",
+/* 61 */      "ADC ($%02x,X)",
+/* 62 */      "illop_62",
+/* 63 */      "illop_63",
+/* 64 */      "illop_64",
+/* 65 */      "ADC $%02x",
+/* 66 */      "ROR $%02x",
+/* 67 */      "illop_67",
+/* 68 */      "PLA",
+/* 69 */      "ADC #$%02x",
+/* 6a */      "ROR A",
+/* 6b */      "illop_6b",
+/* 6c */      "JMP ($%04x)",
+/* 6d */      "ADC $%04x",
+/* 6e */      "ROR $%04x",
+/* 6f */      "illop_6f",
+/* 70 */      "BVS",
+/* 71 */      "ADC ($%02x,Y)",
+/* 72 */      "illop_72",
+/* 73 */      "illop_73",
+/* 74 */      "illop_74",
+/* 75 */      "ADC $%02x,X",
+/* 76 */      "ROR $%02x,X",
+/* 77 */      "illop_77",
+/* 78 */      "SEI",
+/* 79 */      "ADC $%04x,Y",
+/* 7a */      "illop_7a",
+/* 7b */      "illop_7b",
+/* 7c */      "illop_7c",
+/* 7d */      "ADC $%04x,X",
+/* 7e */      "ROR $%04x,X",
+/* 7f */      "illop_7f",
+/* 80 */      "illop_80",
+/* 81 */      "STA ($%02x,X)",
+/* 82 */      "illop_82",
+/* 83 */      "illop_83",
+/* 84 */      "STY $%02x",
+/* 85 */      "STA $%02x",
+/* 86 */      "STX $%02x",
+/* 87 */      "illop_87",
+/* 88 */      "DEY",
+/* 89 */      "illop_89",
+/* 8a */      "TXA",
+/* 8b */      "illop_8b",
+/* 8c */      "STY $%04x",
+/* 8d */      "STA $%04x",
+/* 8e */      "STX $%04x",
+/* 8f */      "illop_8f",
+/* 90 */      "BCC $%02x",
+/* 91 */      "STA ($%02x,Y)",
+/* 92 */      "illop_92",
+/* 93 */      "illop_93",
+/* 94 */      "STY $%02x,X",
+/* 95 */      "STA $%02x,X",
+/* 96 */      "STX $%02x,Y",
+/* 97 */      "illop_97",
+/* 98 */      "TYA",
+/* 99 */      "STA $%04x,Y",
+/* 9a */      "TXS",
+/* 9b */      "illop_9b",
+/* 9c */      "illop_9c",
+/* 9d */      "STA $%04x,X",
+/* 9e */      "illop_9e",
+/* 9f */      "illop_9f",
+/* a0 */      "LDY #$%02x",
+/* a1 */      "LDA ($%02x,X)",
+/* a2 */      "LDX #$%02x",
+/* a3 */      "illop_a3",
+/* a4 */      "LDY $%02x",
+/* a5 */      "LDA $%02x",
+/* a6 */      "LDX $%02x",
+/* a7 */      "illop_a7",
+/* a8 */      "TAY",
+/* a9 */      "LDA #$%02x",
+/* aa */      "TAX",
+/* ab */      "illop_ab",
+/* ac */      "LDY $%04x",
+/* ad */      "LDA $%04x",
+/* ae */      "LDX $%04x",
+/* af */      "illop_af",
+/* b0 */      "BCS $%02x",
+/* b1 */      "LDA ($%02x,Y)",
+/* b2 */      "illop_b2",
+/* b3 */      "illop_b3",
+/* b4 */      "LDY $%02x,X",
+/* b5 */      "LDA $%02x,X",
+/* b6 */      "LDX $%02x,Y",
+/* b7 */      "illop_b7",
+/* b8 */      "CLV",
+/* b9 */      "LDA $%04x,Y",
+/* ba */      "TSX",
+/* bb */      "illop_bb",
+/* bc */      "LDY $%04x,X",
+/* bd */      "LDA $%04x,X",
+/* be */      "LDX $%04x,Y",
+/* bf */      "illop_bf",
+/* c0 */      "CPY #$%02x",
+/* c1 */      "CMP ($%02x,X)",
+/* c2 */      "illop_c2",
+/* c3 */      "illop_c3",
+/* c4 */      "CPY $%02x",
+/* c5 */      "CMP $%02x",
+/* c6 */      "DEC $%02x",
+/* c7 */      "illop_c7",
+/* c8 */      "INY",
+/* c9 */      "CMP #$%02x",
+/* ca */      "DEX",
+/* cb */      "illop_cb",
+/* cc */      "CPY $%04x",
+/* cd */      "CMP $%04x",
+/* ce */      "DEC $%04x",
+/* cf */      "illop_cf",
+/* d0 */      "BNE $%02x",
+/* d1 */      "CMP ($%02x,Y)",
+/* d2 */      "illop_d2",
+/* d3 */      "illop_d3",
+/* d4 */      "illop_d4",
+/* d5 */      "CMP $%02x,X",
+/* d6 */      "DEC $%02x,X",
+/* d7 */      "illop_d7",
+/* d8 */      "CLD",
+/* d9 */      "CMP $%04x,Y",
+/* da */      "illop_da",
+/* db */      "illop_db",
+/* dc */      "illop_dc",
+/* dd */      "CMP $%04x,X",
+/* de */      "DEC $%04x,X",
+/* df */      "illop_df",
+/* e0 */      "CPX #$%02x",
+/* e1 */      "SBC ($%02x,X)",
+/* e2 */      "illop_e2",
+/* e3 */      "illop_e3",
+/* e4 */      "CPX $%02x",
+/* e5 */      "SBC $%02x",
+/* e6 */      "INC $%02x",
+/* e7 */      "illop_e7",
+/* e8 */      "INX",
+/* e9 */      "SBC #$%02x",
+/* ea */      "NOP",
+/* eb */      "illop_eb",
+/* ec */      "CPX $%04x",
+/* ed */      "SBC $%04x",
+/* ee */      "INC $%04x",
+/* ef */      "illop_ef",
+/* f0 */      "BEQ $%02x",
+/* f1 */      "SBC ($%02x,Y)",
+/* f2 */      "illop_f2",
+/* f3 */      "illop_f3",
+/* f4 */      "illop_f4",
+/* f5 */      "SBC $%02x,X",
+/* f6 */      "INC $%02x,X",
+/* f7 */      "illop_f7",
+/* f8 */      "SED",
+/* f9 */      "SBC $%04x,Y",
+/* fa */      "illop_fa",
+/* fb */      "illop_fb",
+/* fc */      "illop_fc",
+/* fd */      "SBC $%04x,X",
+/* fe */      "INC $%04x,X",
+/* ff */      "illop_ff",
+};
