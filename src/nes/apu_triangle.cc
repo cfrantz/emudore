@@ -18,8 +18,8 @@ Triangle::Triangle()
     timer_period_(0), timer_value_(0),
     duty_value_(0),
     counter_reload_(false),
-    counter_period_(0), counter_value_(0)
-{}
+    counter_period_(0), counter_value_(0),
+    dbgp_(0) {}
 
 uint8_t Triangle::InternalOutput() {
     if (!enabled_) return 0;

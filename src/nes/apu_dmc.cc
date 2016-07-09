@@ -13,7 +13,8 @@ DMC::DMC(NES* nes) :
     sample_address_(0), sample_length_(0),
     current_address_(0), current_length_(0),
     shift_register_(0), bit_count_(0), tick_value_(0), tick_period_(0),
-    loop_(0), irq_(0) {}
+    loop_(0), irq_(0),
+    dbgp_(0) {}
 
 uint8_t DMC::Output() {
     dbgbuf_[dbgp_] = value_;

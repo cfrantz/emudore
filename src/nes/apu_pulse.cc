@@ -30,7 +30,8 @@ Pulse::Pulse(uint8_t channel)
     sweep_shift_(0), sweep_period_(0), sweep_value_(0),
     envelope_enable_(false), envelope_start_(false), envelope_loop_(false),
     envelope_period_(0), envelope_value_(0), envelope_volume_(0),
-    constant_volume_(0) {}
+    constant_volume_(0),
+    dbgp_(0) {}
 
 uint8_t Pulse::InternalOutput() {
     if (!enabled_) return 0;
