@@ -465,10 +465,19 @@ void IO::AudioCallback(void* userdata, uint8_t* stream, int len) {
     io->audio_callback_(stream, len);
 }
 
-uint64_t IO::clock_micros() {
+uint64_t IO::clock_nanos() {
     struct timespec tp;
     clock_gettime(CLOCK_MONOTONIC, &tp);
-    return tp.tv_sec * 1000000 + tp.tv_nsec / 1000;
+    return tp.tv_sec * 1000000000 + tp.tv_nsec;
+}
+
+void IO::sleep_nanos(uint64_t ns) {
+    struct timespec tp;
+    tp.tv_sec = ns / 1000000000;
+    tp.tv_nsec = ns % 1000000000;
+
+    // TODO(cfrantz): if err, compute remainder and resume sleep
+    nanosleep(&tp, nullptr);
 }
 
 void IO::init_controllers(std::function<void(SDL_Event*)> callback) {

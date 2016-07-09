@@ -75,7 +75,6 @@ class IO
     static const int kWait = 18000;
     /* vertical refresh sync */
     std::chrono::high_resolution_clock::time_point prev_frame_was_at_;
-    void vsync();
     bool ProcessEvent(SDL_Event* event);
     static void AudioCallback(void* userdata, uint8_t* stream, int len);
 
@@ -114,7 +113,8 @@ class IO
     void screen_refresh();
     void init_audio(int freq, int chan, int bufsz, SDL_AudioFormat fmt,
                     std::function<void(uint8_t*, int)> callback);
-    uint64_t clock_micros();
+    uint64_t clock_nanos();
+    void sleep_nanos(uint64_t ns);
     void yield();
     inline void set_keyboard_callback(
             std::function<void(SDL_Event*)> callback) {
@@ -124,6 +124,7 @@ class IO
             std::function<void(SDL_Renderer*)> callback) {
         refresh_callback_ = callback;
     }
+    void vsync();
 };
 
 // inline member functions accesible from other classes /////////////////////
