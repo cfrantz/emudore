@@ -26,7 +26,7 @@ class Mapper4: public Mapper {
     uint8_t prg_mode_;
     uint8_t chr_mode_;
     uint8_t registers_[8];
-    int prg_offset_[8];
+    int prg_offset_[4];
     int chr_offset_[8];
 };
 
@@ -82,7 +82,9 @@ void Mapper4::Emulate() {
     auto scanline = nes_->ppu()->scanline();
     auto mask = nes_->ppu()->mask();
 
-    if (cycle != 280)
+    // fogleman's NES uses 280 here (and comments that it should be 260)
+    // Nimes uses 300.
+    if (cycle != 260)
         return;
     if (scanline >= 240 && scanline <= 260)
         return;
@@ -93,8 +95,9 @@ void Mapper4::Emulate() {
         counter_ = reload_;
     } else {
         counter_--;
-        if (counter_ == 0 && irqen_)
+        if (counter_ == 0 && irqen_) {
             nes_->IRQ();
+        }
     }
 }
 
@@ -160,12 +163,19 @@ void Mapper4::UpdateOffsets() {
 
 void Mapper4::WriteBankSelect(uint8_t val) {
     prg_mode_ = (val >> 6) & 1;
-    chr_mode_ = (val >> 6) & 1;
+    chr_mode_ = (val >> 7) & 1;
     register_ = val & 7;
 }
 
 void Mapper4::WriteMirror(uint8_t val) {
-    nes_->cartridge()->set_mirror(Cartridge::MirrorMode(val & 1));
+    switch(val & 1) {
+    case 0:
+        nes_->cartridge()->set_mirror(Cartridge::MirrorMode::VERTICAL);
+        break;
+    case 1:
+        nes_->cartridge()->set_mirror(Cartridge::MirrorMode::HORIZONTAL);
+        break;
+    }
 }
 
 void Mapper4::WriteRegister(uint16_t addr, uint8_t val) {
