@@ -69,7 +69,8 @@ void APU::StepLength() {
 }
 
 void APU::SignalIRQ() {
-    nes_->IRQ();
+    if (frame_irq_)
+        nes_->IRQ();
 }
 
 void APU::StepFrameCounter() {
@@ -209,7 +210,7 @@ uint8_t APU::Read(uint16_t addr) {
         result |= (pulse_[1].length() > 0) << 1;
         result |= (triangle_.length() > 0) << 2;
         result |= (noise_.length() > 0   ) << 3;
-        result |= (dmc_.length() > 0      ) << 4;
+        result |= (dmc_.length() > 0     ) << 4;
     }
     return result;
 }
