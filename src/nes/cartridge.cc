@@ -1,8 +1,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
+#include <gflags/gflags.h>
 
 #include "src/nes/cartridge.h"
+
+DEFINE_bool(sram_on_disk, true, "Save SRAM to disk.");
 
 Cartridge::Cartridge(NES* nes)
     : nes_(nes),
@@ -61,6 +64,41 @@ void Cartridge::LoadFile(const std::string& filename) {
         fprintf(stderr, "Couldn't read CHR.\n");
         abort();
     }
+    fclose(fp);
+
+    sram_filename_ = filename + ".sram";
+    if (FLAGS_sram_on_disk && header_.sram) {
+        if ((fp = fopen(sram_filename_.c_str(), "rb")) != nullptr) {;
+            if (fread(sram_, sizeof(sram_), 1, fp) == 1) {
+                fprintf(stderr, "Couldn't read SRAM.\n");
+            }
+            fclose(fp);
+        }
+    }
+}
+
+void Cartridge::Emulate() {
+    static uint64_t last_frame;
+
+    if (last_frame != nes_->frame()) {
+        SaveSram();
+    }
+    last_frame = nes_->frame();
+}
+
+void Cartridge::SaveSram() {
+    if (!FLAGS_sram_on_disk)
+        return;
+    if (!header_.sram)
+        return;
+
+    FILE *fp = fopen(sram_filename_.c_str(), "wb");
+    if (!fp) {
+        fprintf(stderr, "Can't open %s for writing.\n", sram_filename_.c_str());
+        return;
+    }
+    fwrite(sram_, 1, sizeof(sram_), fp);
+    fclose(fp);
 }
 
 void Cartridge::PrintHeader() {

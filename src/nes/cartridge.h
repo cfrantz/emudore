@@ -52,8 +52,8 @@ class Cartridge {
     inline void WriteChr(uint32_t addr, uint8_t val) { chr_[addr] = val; }
     inline void WriteSram(uint32_t addr, uint8_t val) { sram_[addr] = val; }
 
-
-
+    void Emulate();
+    void SaveSram();
 
   private:
     NES* nes_;
@@ -65,6 +65,7 @@ class Cartridge {
     uint8_t *trainer_;
     MirrorMode mirror_;
     uint8_t sram_[0x2000];
+    std::string sram_filename_;
 };
 
 #endif // EMUDORE_SRC_NES_CARTRIDGE_H

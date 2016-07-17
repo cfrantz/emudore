@@ -247,6 +247,7 @@ bool NES::Emulate() {
         // The PPU is clocked at 3 dots per CPU clock
         ppu_->Emulate();
         mapper_->Emulate();
+        cart_->Emulate();
     }
     for(int i=0; i<n; i++) {
         apu_->Emulate();

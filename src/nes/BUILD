@@ -29,6 +29,7 @@ cc_library(
     srcs = ["cartridge.cc"],
     deps = [
         ":nes-interface",
+        "//external:gflags",
     ],
 )
 
