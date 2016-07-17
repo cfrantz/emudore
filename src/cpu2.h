@@ -11,10 +11,16 @@ class Cpu {
 
     void Reset();
     int Emulate();
-    std::string Disassemble(uint16_t *nexti=nullptr);
+    std::string Disassemble(uint16_t *nexti=nullptr, bool tracemode=false);
     std::string CpuState();
-    inline void NMI() { nmi_pending_ = true; }
-    inline void IRQ() { irq_pending_ = true; }
+    inline void NMI() {
+        nmi_pending_ = true;
+        Emit("NMI");
+    }
+    inline void IRQ() {
+        irq_pending_ = true;
+        Emit("IRQ");
+    }
 
     inline void reset() { Reset(); }
     inline int emulate() { return Emulate(); }
@@ -127,13 +133,22 @@ class Cpu {
     uint8_t sp_;
     uint8_t a_, x_, y_;
     
-    int cycles_;
+    uint64_t cycles_;
     int stall_;
     bool nmi_pending_;
     bool irq_pending_;
 
     static const InstructionInfo info_[256];
     static const char* instruction_names_[256];
+
+    void Flush();
+    void Emit(const char *buf, int how=0);
+    void Trace();
+
+    static const int TRACEBUFSZ = 1000000;
+    static const int SLOP = 1000;
+    char tracebuf_[TRACEBUFSZ + SLOP];
+    int tbptr_;
 };
 
 #endif // EMUDORE_SRC_CPU2_H

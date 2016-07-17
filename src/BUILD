@@ -17,6 +17,7 @@ cc_library(
     deps = [
         ":memory",
         ":util",
+        "//external:gflags",
     ],
 )
 
