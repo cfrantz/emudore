@@ -6,7 +6,6 @@
 #include "src/nes/nes.h"
 
 #include "src/cpu2.h"
-#include "src/debugger.h"
 #include "src/io.h"
 #include "src/nes/apu.h"
 #include "src/nes/cartridge.h"
@@ -73,9 +72,11 @@ NES::NES() :
     io_->set_refresh_callback([this](SDL_Renderer* r) { DebugStuff(r); });
     io_->set_keyboard_callback(
             [this](SDL_Event* event) { HandleKeyboard(event); });
+#if 0
     debugger_ = new Debugger();
     debugger_->cpu(cpu_);
     debugger_->memory(mem_);
+#endif
     cpu_->memory(mem_);
     for(size_t i=0; i<sizeof(palette_)/sizeof(palette_[0]); i++) {
         palette_[i] = (standard_palette[i] & 0xFF00FF00) |
@@ -239,8 +240,10 @@ void NES::Reset() {
 }
 
 bool NES::Emulate() {
+#if 0
     if (!debugger_->emulate())
         return false;
+#endif
 
     const int n = cpu_->Emulate();
     for(int i=0; i<n*3; i++) {
@@ -298,6 +301,7 @@ void NES::Run() {
         }
         avg = 1e9 / (avg / double(FT_SAMPLES));
 
+#if 0
         if (n>240) {
             double f = 1e9 / FLAGS_fps;
             fudge += (f * (avg - FLAGS_fps)/FLAGS_fps) * 0.01;
@@ -309,6 +313,7 @@ void NES::Run() {
             }
             */
         }
+#endif
 
         if (!io_->emulate())
             break;
