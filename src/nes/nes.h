@@ -41,6 +41,7 @@ class NES {
 
     int cpu_cycles();
     inline void yield() const { io_->yield(); }
+    inline void sleep_nanos(uint64_t ns) const { io_->sleep_nanos(ns); }
     inline void Stall(int s) { stall_ += s; }
 
     void Reset();
@@ -75,7 +76,9 @@ class NES {
     void HexdumpBytes(int argc, char **argv);
     void HexdumpWords(int argc, char **argv);
     void WriteBytes(int argc, char **argv);
+    void WriteBytesInc(int argc, char **argv);
     void WriteWords(int argc, char **argv);
+    void Z2Cheat(int argc, char **argv);
 
     void NailByte(int argc, char **argv);
     void UnnailByte(int argc, char **argv);

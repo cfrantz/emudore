@@ -25,11 +25,16 @@
 
 DEFINE_string(ctrlcfg, "", "Path to the SDL gamecontrollerdb.txt file.");
 DEFINE_double(scale, 1.0, "Resolution scale factor.\n");
+DEFINE_double(aspect_ratio, 1.333, "Aspect ratio.\n");
 
 // clas ctor and dtor //////////////////////////////////////////////////////////
 
 IO::IO(size_t cols, size_t rows, double refresh_rate)
-    : cols_(cols), rows_(rows), scale_(FLAGS_scale), refresh_rate_(refresh_rate)
+    : cols_(cols),
+    rows_(rows),
+    scale_(FLAGS_scale),
+    aspect_(FLAGS_aspect_ratio),
+    refresh_rate_(refresh_rate)
 {
   SDL_Init(SDL_INIT_VIDEO |
            SDL_INIT_AUDIO |
@@ -51,7 +56,7 @@ IO::IO(size_t cols, size_t rows, double refresh_rate)
         "emudore",
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
-        cols_ * scale_,
+        cols_ * scale_ * aspect_,
         rows_ * scale_,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
@@ -98,6 +103,7 @@ IO::IO(size_t cols, size_t rows, double refresh_rate)
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, cols_, rows_, 0, GL_RGBA, GL_UNSIGNED_BYTE, frame_);
+  printf("nesimg = %d\n", nesimg_);
 
   ImGuiInit();
 }
@@ -390,14 +396,15 @@ void IO::screen_refresh()
 
   glBegin(GL_QUADS);
   glTexCoord2f(0, 0); glVertex2f(0, 0);
-  glTexCoord2f(1, 0); glVertex2f(cols_ * scale_, 0);
-  glTexCoord2f(1, 1); glVertex2f(cols_ * scale_, rows_ * scale_);
+  glTexCoord2f(1, 0); glVertex2f(cols_ * scale_ * aspect_, 0);
+  glTexCoord2f(1, 1); glVertex2f(cols_ * scale_ * aspect_, rows_ * scale_);
   glTexCoord2f(0, 1); glVertex2f(0, rows_ * scale_);
   glEnd();
 
   NewFrame();
   if (ImGui::Begin("MyDebug", &open, ImGuiWindowFlags_MenuBar)) {
-    ImGui::SliderFloat("Zoom", &scale_, 0.0f, 6.0f);
+    ImGui::DragFloat("Zoom", &scale_, 0.01f, 0.0f, 10.0f, "%.02f");
+    ImGui::DragFloat("Aspect Ratio", &aspect_, 0.001f, 0.0f, 3.0f, "%.03f");
     ImGui::ColorEdit3("Clear Color", (float*)&clear_color_);
     ImGui::Text("Fps: %.1f", io.Framerate);
     refresh_callback_(renderer_);
@@ -531,7 +538,7 @@ void IO::ImGuiInit() {
     mousebutton_[1] = false;
     mousebutton_[2] = false;
 
-    clear_color_ = ImColor(114, 144, 154);
+    clear_color_ = ImColor(10, 10, 60);
 
     // Keyboard mapping. ImGui will use those indices to peek into the io.KeyDown[] array.
     io.KeyMap[ImGuiKey_Tab] = SDLK_TAB;

@@ -7,6 +7,7 @@
 class Mapper1: public Mapper {
   public:
     Mapper1(NES* nes);
+    void ReadChr2(uint16_t addr, uint8_t* a, uint8_t* b) override;
     uint8_t Read(uint16_t addr) override;
     void Write(uint16_t addr, uint8_t val) override;
     void Emulate() override;

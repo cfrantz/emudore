@@ -31,6 +31,17 @@ uint8_t Mapper1::Read(uint16_t addr) {
     return 0;
 }
 
+void Mapper1::ReadChr2(uint16_t addr, uint8_t* a, uint8_t* b) {
+    if (addr < 0x2000) {
+        int bank = addr / 0x1000;
+        int offset = addr % 0x1000;
+        *a = nes_->cartridge()->ReadChr(chr_offset_[bank] + offset);
+        *b = nes_->cartridge()->ReadChr(chr_offset_[bank] + offset + 8);
+    } else {
+        fprintf(stderr, "Unhandled mapper1 ReadChr2 at %04x\n", addr);
+    }
+}
+
 void Mapper1::Write(uint16_t addr, uint8_t val) {
     if (addr < 0x2000) {
         int bank = addr / 0x1000;

@@ -9,6 +9,10 @@ class Mapper {
   public:
     Mapper(NES* nes) : nes_(nes) {}
     virtual uint8_t Read(uint16_t addr) = 0;
+    virtual void ReadChr2(uint16_t addr, uint8_t* a, uint8_t* b) {
+        *a = Read(addr);
+        *b = Read(addr + 8);
+    }
     virtual void Write(uint16_t addr, uint8_t val) = 0;
     virtual void Emulate() {};
   protected:

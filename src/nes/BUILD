@@ -151,6 +151,7 @@ cc_library(
     deps = [
         ":cartridge",
         ":fm2",
+        ":mapper",
         ":mem-interface",
         ":nes-interface",
         "//src:io",

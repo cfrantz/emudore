@@ -120,18 +120,6 @@ void Mem::PPUWrite(uint16_t addr, uint8_t val) {
     }
 }
 
-uint8_t Mem::PaletteRead(uint16_t addr) {
-    if (addr >= 16 && (addr % 4) == 0)
-        addr -= 16;
-    return palette_[addr];
-}
-
-void Mem::PaletteWrite(uint16_t addr, uint8_t val) {
-    if (addr >= 16 && (addr % 4) == 0)
-        addr -= 16;
-    palette_[addr] = val;
-}
-
 void Mem::HexDump(int addr, int len) {
     static const char hex[] = "0123456789abcdef";
     char line[80];

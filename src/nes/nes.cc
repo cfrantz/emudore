@@ -19,10 +19,7 @@
 
 DEFINE_string(fm2, "", "FM2 Movie file.");
 DEFINE_double(fps, 60.0988, "Desired NES fps.");
-double avg;
-#define FT_SAMPLES 100
-int64_t ft[FT_SAMPLES];
-int64_t fudge;
+
 
 const uint32_t standard_palette[] = {
     0xFF666666, 0xFF002A88, 0xFF1412A7, 0xFF3B00A4,
@@ -96,6 +93,9 @@ NES::NES() :
     console_.RegisterCommand("wp", "Write PRG memory", [=](int argc, char **argv){
         this->WriteBytes(argc, argv);
     });
+    console_.RegisterCommand("wi", "Write Bytes Incrementing", [=](int argc, char **argv){
+        this->WriteBytesInc(argc, argv);
+    });
     console_.RegisterCommand("dw", "Hexdump words", [=](int argc, char **argv){
         this->HexdumpWords(argc, argv);
     });
@@ -119,6 +119,9 @@ NES::NES() :
     });
     console_.RegisterCommand("abort", "Quit Immediatelyt", [=](int argc, char **argv){
         abort();
+    });
+    console_.RegisterCommand("z2cheat", "Zelda2 Cheat", [=](int argc, char **argv){
+        Z2Cheat(argc, argv);
     });
 }
 
@@ -187,7 +190,6 @@ void NES::DebugStuff(SDL_Renderer* r) {
     static bool palette_editor, debug_console;
 
     ImGui::Text("Frame: %d", int(ppu_->frame()));
-    ImGui::Text("Avg FPS: %.3f, diff=%.6f fudge=%d", avg, avg-FLAGS_fps, (int)fudge);
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Console")) {
             ImGui::MenuItem("Palette Editor", nullptr, &palette_editor);
@@ -273,50 +275,31 @@ bool NES::EmulateFrame() {
 }
 
 void NES::Run() {
-    Reset();
-    uint64_t t0, t0last, t1;;
+#if 0
+    uint64_t t0, t1;
     int64_t ns;
-//        , fudge = 0;
-//    double avg;
-   
-    avg = FLAGS_fps;
 
     t0 = io_->clock_nanos();
-    t0last = t0;
-    for(int n=1;;n++) {
+#endif
+
+    Reset();
+    for(;;) {
         io_->screen_refresh();
 
+#if 0
+        // This is ifdef'd out in favor of sleeping in the audio loop
+        // to lock to the right frame rate.
         t1 = io_->clock_nanos();
-        ns = int64_t(1e9 / FLAGS_fps) - (t1 - t0) + fudge;
-        if (ns > 0) {
-            io_->sleep_nanos(ns);
+        ns = int64_t(1e9 / FLAGS_fps) - (t1 - t0);
+        if (ns > 200) {
+            sleep_nanos(ns - 100);
         }
         t0 = io_->clock_nanos();
-        ft[n%FT_SAMPLES] = t0 - t0last;
-        t0last = t0;
-
-        avg = 0;
-        for(int j=0; j<FT_SAMPLES; j++) {
-            avg += ft[j];
-        }
-        avg = 1e9 / (avg / double(FT_SAMPLES));
-
-#if 0
-        if (n>240) {
-            double f = 1e9 / FLAGS_fps;
-            fudge += (f * (avg - FLAGS_fps)/FLAGS_fps) * 0.01;
-            /*
-            if (fudge > 16638935) {
-                fudge = 16638935;
-            } else if (fudge < -16638935) {
-                fudge = -16638935;
-            }
-            */
-        }
 #endif
 
         if (!io_->emulate())
             break;
+
         if (pause_) {
             if (!step_)
                 continue;
@@ -386,6 +369,20 @@ void NES::WriteBytes(int argc, char **argv) {
             cart_->WriteChr(addr++, val);
         else if (argv[0][1] == 'p')
             cart_->WritePrg(addr++, val);
+    }
+}
+
+void NES::WriteBytesInc(int argc, char **argv) {
+    if (argc < 4) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr> <sval> <len>", argv[0]);
+        return;
+    }
+    uint16_t addr = strtoul(argv[1], 0, 0);
+    uint8_t val = strtoul(argv[2], 0, 0);
+    uint16_t len = strtoul(argv[3], 0, 0);
+    for(unsigned i=0; i<len; i++) {
+        mem_->Write(addr+i, val+i);
     }
 }
 
@@ -459,6 +456,13 @@ void NES::NailByte(int argc, char **argv) {
         uint8_t val = strtoul(argv[i], 0, 0);
         nailed_[addr++] = val;
     }
+}
+
+void NES::Z2Cheat(int argc, char **argv) {
+    console_.ExecCommand("wb 0x777 8 8 8");
+    console_.ExecCommand("wb 0x77b 1 1 1 1 1 1 1 1 8 8 1 1 1 1 1 1 1 1");
+    console_.ExecCommand("wb 0x796 0x14");
+    console_.ExecCommand("nail 0x773 255 255");
 }
 
 void NES::UnnailByte(int argc, char **argv) {

@@ -49,7 +49,7 @@ class PPU {
     void FetchHighTileByte();
     void StoreTileData();
     uint8_t BackgroundPixel();
-    std::tuple<uint8_t, uint8_t> SpritePixel();
+    uint16_t SpritePixel();
     void RenderPixel();
     uint32_t FetchSpritePattern(int i, int row);
     void EvaluateSprites();
@@ -118,6 +118,9 @@ class PPU {
     Position scrollreg_[262];
     Position last_scrollreg_;
 
+    void BuildExpanderTables();
+    uint32_t normal_table_[256];
+    uint32_t reflection_table_[256];
 };
 
 #endif // EMUDORE_SRC_NES_PPU_H

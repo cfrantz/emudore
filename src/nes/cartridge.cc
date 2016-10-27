@@ -78,12 +78,12 @@ void Cartridge::LoadFile(const std::string& filename) {
 }
 
 void Cartridge::Emulate() {
-    static uint64_t last_frame;
+    static uint64_t save_frame;
 
-    if (last_frame != nes_->frame()) {
+    if (nes_->frame() - save_frame >= 60) {
+        save_frame = nes_->frame();
         SaveSram();
     }
-    last_frame = nes_->frame();
 }
 
 void Cartridge::SaveSram() {

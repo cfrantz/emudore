@@ -29,7 +29,7 @@ class APU {
     void Emulate();
     void DebugStuff();
 
-    static const int BUFFERLEN = 4096;
+    static const int BUFFERLEN = 1024;
   private:
     void set_frame_counter(uint8_t val);
     void set_control(uint8_t val);
@@ -45,6 +45,7 @@ class APU {
     uint8_t frame_period_;
     uint8_t frame_value_;;
     bool frame_irq_;
+    float volume_;
 
     float data_[BUFFERLEN];
     std::atomic<int> len_;

@@ -58,6 +58,7 @@ class IO
     size_t cols_;
     size_t rows_;
     float scale_;
+    float aspect_;
     double refresh_rate_;
     unsigned int color_palette[16];
     uint8_t keyboard_matrix_[8];

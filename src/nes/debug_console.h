@@ -14,8 +14,8 @@ class DebugConsole {
     void ClearLog();
     void AddLog(const char* fmt, ...) IM_PRINTFARGS(2);
     void Draw(const char* title, bool* p_open);
-  private:
     void ExecCommand(const char* command_line);
+  private:
     int TextEditCallback(ImGuiTextEditCallbackData* data);
 
     static int TextEditCallbackStub(ImGuiTextEditCallbackData* data);

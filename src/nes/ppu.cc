@@ -6,6 +6,7 @@
 #include "src/nes/fm2.h"
 #include "src/nes/ppu.h"
 #include "src/nes/mem.h"
+#include "src/nes/mapper.h"
 #include "src/io.h"
 
 PPU::PPU(NES* nes)
@@ -20,7 +21,9 @@ PPU::PPU(NES* nes)
     mask_{0,},
     status_{0,},
     oam_addr_(0), buffered_data_(0),
-    picture_{0,} {}
+    picture_{0,} {
+    BuildExpanderTables();
+}
 
 void PPU::Reset() {
     cycle_ = 340;
@@ -209,26 +212,46 @@ void PPU::FetchAttributeByte() {
 void PPU::FetchLowTileByte() {
     uint16_t a = (0x1000 * control_.bgtable) + (16 * nametable_) +
                  ((v_ >> 12) & 7);
-    lowtile_ = nes_->memory()->PPURead(a);
+    // Fetch both the low and high bytes in one call
+    nes_->mapper()->ReadChr2(a, &lowtile_, &hightile_);
 }
 
 void PPU::FetchHighTileByte() {
-    uint16_t a = (0x1000 * control_.bgtable) + (16 * nametable_) +
-                 ((v_ >> 12) & 7);
-    hightile_ = nes_->memory()->PPURead(a + 8);
+    // Used to fetch the high byte here, but now nothing
+}
+
+void PPU::BuildExpanderTables() {
+    // Precompute expanded 8-bit patterns into 32-bits to we can build the
+    // pattern+attribute words later without any loops.
+    // We compute both the normal and reflected value:
+    // 8 bit abcdefgh -> 000a000b000c000d000e000f000g000h
+    //                -> 000h000g000f000e000d000c000b000a
+    uint8_t val;
+    for(int n=0; n<256; n++) {
+        uint32_t data = 0;
+        val = n;
+        for(int bit=0; bit<8; bit++) {
+            data = (data<<4) | (val & 0x80)>>7;
+            val <<= 1;
+        }
+        reflection_table_[n] = data;
+
+        val = n;
+        for(int bit=0; bit<8; bit++) {
+            data = (data<<4) | (val & 1);
+            val >>= 1;
+        }
+        normal_table_[n] = data;
+    }
 }
 
 void PPU::StoreTileData() {
     uint64_t data = 0;
-    for(int i=0; i<8; i++) {
-        uint8_t a = attrtable_;
-        uint8_t p1 = (lowtile_ & 0x80) >> 7;
-        uint8_t p2 = (hightile_ & 0x80) >> 6;
-        lowtile_ <<= 1;
-        hightile_ <<= 1;
-        data = (data << 4) | a | p1 | p2;
-    }
-    tiledata_ |= data;
+    // Expand the 2-bit attribute value into every nybble of the word
+    // so we can just or it with the tile pattern data.
+    uint32_t aa = 0x11111111 * uint32_t(attrtable_);
+    data = reflection_table_[lowtile_] | reflection_table_[hightile_]<<1;
+    tiledata_ |= (data | aa);
 }
 
 uint8_t PPU::BackgroundPixel() {
@@ -238,7 +261,7 @@ uint8_t PPU::BackgroundPixel() {
     return uint8_t(data & 0x0F);
 }
 
-std::tuple<uint8_t, uint8_t> PPU::SpritePixel() {
+uint16_t PPU::SpritePixel() {
     if (mask_.showsprites) {
         for(int i=0; i < sprite_.count; i++) {
             uint32_t offset = cycle_ - 1 - sprite_.position[i];
@@ -249,10 +272,10 @@ std::tuple<uint8_t, uint8_t> PPU::SpritePixel() {
             if (color % 4 == 0)
                 continue;
 
-            return std::make_tuple(i, color);
+            return (i<<8) | color;
         }
     }
-    return std::make_tuple(0, 0);
+    return 0;
 }
 
 
@@ -261,7 +284,7 @@ void PPU::RenderPixel() {
     int y = scanline_;
     uint8_t background = BackgroundPixel();
     auto sp = SpritePixel();
-    uint8_t i = std::get<0>(sp), sprite = std::get<1>(sp);
+    uint8_t i = sp>>8, sprite = sp & 0xff;
     uint8_t color;
 
     if (x < 8) {
@@ -311,22 +334,14 @@ uint32_t PPU::FetchSpritePattern(int i, int row) {
 
     addr = 0x1000 * table + tile * 16 + row;
     uint8_t a = (attr & 3) << 2;
-    uint8_t lo = nes_->memory()->PPURead(addr);
-    uint8_t hi = nes_->memory()->PPURead(addr + 8);
-    uint32_t result = 0;
+    uint8_t lo, hi;
+    nes_->mapper()->ReadChr2(addr, &lo, &hi);
+    uint32_t result = 0x11111111 * uint32_t(a);
 
-    for(i=0; i<8; i++) {
-        uint8_t p1, p2;
-        if (attr & 0x40) {
-            p1 = lo & 1;
-            p2 = (hi & 1) << 1;
-            lo >>= 1; hi >>= 1;
-        } else {
-            p1 = (lo & 0x80) >> 7;
-            p2 = (hi & 0x80) >> 6;
-            lo <<= 1; hi <<= 1;
-        }
-        result = (result << 4) | a | p1 | p2;
+    if (attr & 0x40) {
+        result |= normal_table_[lo] | normal_table_[hi]<<1;
+    } else {
+        result |= reflection_table_[lo] | reflection_table_[hi]<<1;
     }
     return result;
 }
@@ -462,8 +477,8 @@ void PPU::TileMemImage(uint32_t* imgbuf, uint16_t addr, int palette,
         for(int x=0; x<16; x++, tile++) {
             memset(&pcol, 0, sizeof(pcol));
             for(int row=0; row<8; row++) {
-                uint8_t a = nes_->memory()->PPURead(addr + 16 * tile + row);
-                uint8_t b = nes_->memory()->PPURead(addr + 16 * tile + 8 + row);
+                uint8_t a, b;
+                nes_->mapper()->ReadChr2(addr+16*tile+row, &a, &b);
                 for(int col=0; col<8; col++, a<<=1, b<<=1) {
                     int color = ((a & 0x80) >> 7) | ((b & 0x80) >> 6);
                     pcol[color]++;

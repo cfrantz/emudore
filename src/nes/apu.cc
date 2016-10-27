@@ -7,6 +7,7 @@
 #include "src/nes/nes.h"
 
 DEFINE_bool(audio_yield, true, "Yield when about to overrun the audio buffer.");
+DEFINE_double(volume, 0.5, "Sound volume");
 
 static float pulse_table[32];
 static float other_table[204];
@@ -33,6 +34,7 @@ APU::APU(NES *nes)
     frame_period_(0),
     frame_value_(0),
     frame_irq_(0),
+    volume_(FLAGS_volume),
     data_{0, },
     len_(0) {
         mutex_ = SDL_CreateMutex();
@@ -101,12 +103,13 @@ float APU::Output() {
     uint8_t t = triangle_.Output();
     uint8_t n = noise_.Output();
     uint8_t d = dmc_.Output();
-    return pulse_table[p0+p1] + other_table[t*3 + n*2 + d];
+    return volume_* (pulse_table[p0+p1] + other_table[t*3 + n*2 + d]);
 }
 
 void APU::DebugStuff() {
     static bool display_audio;
 
+    ImGui::SliderFloat("Volume", &volume_, 0.0f, 1.0f);
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Audio")) {
             ImGui::MenuItem("Waveforms", nullptr, &display_audio);
@@ -133,17 +136,28 @@ void APU::Emulate() {
 
     StepTimer();
 
+    // Every 7457.38 clocks
     int f1 = int(c1 / NES::frame_counter_rate);
     int f2 = int(c2 / NES::frame_counter_rate);
     if (f1 != f2)
         StepFrameCounter();
 
+    // Every 40.58 clocks
     int s1 = int(c1 / NES::sample_rate);
     int s2 = int(c2 / NES::sample_rate);
     if (s1 != s2) {
         if (FLAGS_audio_yield) {
-            while(len_ == BUFFERLEN)
-                nes_->yield();
+            while(len_ == BUFFERLEN) {
+                // Having a small audio buffer (1K samples, with SDL configured
+                // to callback every 512 samples) and sleeping here seems to
+                // give the best results for accurate framerate (60.1 FPS).
+                //
+                // Timing accuracy can be improved by using even smaller
+                // values, but for now 1K seems to work well enough.
+
+                // Sleep for 100 samples, about 2.2ms
+                nes_->sleep_nanos((1e9 / 44100.0) * 100);
+            }
         }
         SDL_LockMutex(mutex_);
         if (len_ < BUFFERLEN) {
