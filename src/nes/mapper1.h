@@ -11,6 +11,7 @@ class Mapper1: public Mapper {
     uint8_t Read(uint16_t addr) override;
     void Write(uint16_t addr, uint8_t val) override;
     void Emulate() override;
+    void DebugStuff() override;
 
   private:
     int PrgBankOffset(int index);

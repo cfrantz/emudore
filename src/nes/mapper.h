@@ -14,7 +14,8 @@ class Mapper {
         *b = Read(addr + 8);
     }
     virtual void Write(uint16_t addr, uint8_t val) = 0;
-    virtual void Emulate() {};
+    virtual void Emulate() {}
+    virtual void DebugStuff() {}
   protected:
     NES* nes_;
 };
