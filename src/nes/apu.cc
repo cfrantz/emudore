@@ -6,7 +6,6 @@
 #include "src/nes/apu.h"
 #include "src/nes/nes.h"
 
-DEFINE_bool(audio_yield, true, "Yield when about to overrun the audio buffer.");
 DEFINE_double(volume, 0.5, "Sound volume");
 
 static float pulse_table[32];
@@ -38,6 +37,7 @@ APU::APU(NES *nes)
     data_{0, },
     len_(0) {
         mutex_ = SDL_CreateMutex();
+        cond_ = SDL_CreateCond();
         init_tables();
 }
 
@@ -146,20 +146,10 @@ void APU::Emulate() {
     int s1 = int(c1 / NES::sample_rate);
     int s2 = int(c2 / NES::sample_rate);
     if (s1 != s2) {
-        if (FLAGS_audio_yield) {
-            while(len_ == BUFFERLEN) {
-                // Having a small audio buffer (1K samples, with SDL configured
-                // to callback every 512 samples) and sleeping here seems to
-                // give the best results for accurate framerate (60.1 FPS).
-                //
-                // Timing accuracy can be improved by using even smaller
-                // values, but for now 1K seems to work well enough.
-
-                // Sleep for 100 samples, about 2.2ms
-                nes_->sleep_nanos((1e9 / 44100.0) * 100);
-            }
-        }
         SDL_LockMutex(mutex_);
+        while(len_ == BUFFERLEN) {
+            SDL_CondWait(cond_, mutex_);
+        }
         if (len_ < BUFFERLEN) {
             data_[len_++] = Output();
         } else {
@@ -177,6 +167,7 @@ void APU::PlayBuffer(uint8_t* stream, int bufsz) {
         memcpy(stream, data_, bufsz);
         memmove(data_, data_ + n, rest * sizeof(float));
         len_ = rest;
+        SDL_CondSignal(cond_);
         SDL_UnlockMutex(mutex_);
     } else {
 //        fprintf(stderr, "Audio underrun\n");

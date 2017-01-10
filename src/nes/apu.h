@@ -40,6 +40,7 @@ class APU {
     Noise noise_;
     DMC dmc_;
     SDL_mutex *mutex_;
+    SDL_cond *cond_;
 
     uint64_t cycle_;
     uint8_t frame_period_;
