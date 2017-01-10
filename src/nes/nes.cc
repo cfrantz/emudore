@@ -84,6 +84,12 @@ NES::NES() :
     console_.RegisterCommand("db", "Hexdump bytes", [=](int argc, char **argv){
         this->HexdumpBytes(argc, argv);
     });
+    console_.RegisterCommand("dc", "Hexdump CHR bytes", [=](int argc, char **argv){
+        this->HexdumpBytes(argc, argv);
+    });
+    console_.RegisterCommand("dp", "Hexdump PRG bytes", [=](int argc, char **argv){
+        this->HexdumpBytes(argc, argv);
+    });
     console_.RegisterCommand("wb", "Write bytes", [=](int argc, char **argv){
         this->WriteBytes(argc, argv);
     });
@@ -332,7 +338,13 @@ void NES::HexdumpBytes(int argc, char **argv) {
     uint8_t val;
 
     for(i=n=0; i < len; i++) {
-        val = mem_->read_byte_no_io(addr+i);
+        if (argv[0][1] == 'c')
+            val = cart_->ReadChr(addr+i);
+        else if (argv[0][1] == 'p')
+            val = cart_->ReadPrg(addr+i);
+        else
+            val = mem_->read_byte_no_io(addr+i);
+
         if (i % 16 == 0) {
             if (i) {
                 n += sprintf(line+n, "  %s", chr);
