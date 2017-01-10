@@ -24,8 +24,9 @@
 #include "src/gamecontrollerdb.h"
 
 DEFINE_string(ctrlcfg, "", "Path to the SDL gamecontrollerdb.txt file.");
-DEFINE_double(scale, 1.0, "Resolution scale factor.\n");
-DEFINE_double(aspect_ratio, 1.333, "Aspect ratio.\n");
+DEFINE_double(scale, 4.0, "Resolution scale factor.");
+DEFINE_double(aspect_ratio, 1.142, "Aspect ratio.");
+DEFINE_bool(focus, false, "Whether joystick events require window focus");
 
 // clas ctor and dtor //////////////////////////////////////////////////////////
 
@@ -60,6 +61,8 @@ IO::IO(size_t cols, size_t rows, double refresh_rate)
         rows_ * scale_,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS,
+          FLAGS_focus ? "0" : "1");
   glcontext_ = SDL_GL_CreateContext(window_);
 
   /* use a single texture and hardware acceleration */
