@@ -25,104 +25,37 @@
 #define PASTE_(x, y) x ## y
 #define PASTE(x, y) PASTE_(x, y)
 
-#define APPLYX1(X, a0) \
-    X(a0)
-#define APPLYX2(X, a0, a1) \
-    X(a0) X(a1)
-#define APPLYX3(X, a0, a1, a2) \
-    X(a0) X(a1) X(a2)
-#define APPLYX4(X, a0, a1, a2, a3) \
-    X(a0) X(a1) X(a2) X(a3)
-#define APPLYX5(X, a0, a1, a2, a3, a4) \
-    X(a0) X(a1) X(a2) X(a3) X(a4)
-#define APPLYX6(X, a0, a1, a2, a3, a4, a5) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5)
-#define APPLYX7(X, a0, a1, a2, a3, a4, a5, a6) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6)
-#define APPLYX8(X, a0, a1, a2, a3, a4, a5, a6, a7) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7)
+#define APPLYX1(X, a0) X(a0)
+#define APPLYX2(X, a0, ...) X(a0) APPLYX1(X, __VA_ARGS__)
+#define APPLYX3(X, a0, ...) X(a0) APPLYX2(X, __VA_ARGS__)
+#define APPLYX4(X, a0, ...) X(a0) APPLYX3(X, __VA_ARGS__)
+#define APPLYX5(X, a0, ...) X(a0) APPLYX4(X, __VA_ARGS__)
+#define APPLYX6(X, a0, ...) X(a0) APPLYX5(X, __VA_ARGS__)
+#define APPLYX7(X, a0, ...) X(a0) APPLYX6(X, __VA_ARGS__)
+#define APPLYX8(X, a0, ...) X(a0) APPLYX7(X, __VA_ARGS__)
+#define APPLYX9(X, a0, ...) X(a0) APPLYX8(X, __VA_ARGS__)
+#define APPLYX10(X, a0, ...) X(a0) APPLYX9(X, __VA_ARGS__)
+#define APPLYX11(X, a0, ...) X(a0) APPLYX10(X, __VA_ARGS__)
+#define APPLYX12(X, a0, ...) X(a0) APPLYX11(X, __VA_ARGS__)
+#define APPLYX13(X, a0, ...) X(a0) APPLYX12(X, __VA_ARGS__)
+#define APPLYX14(X, a0, ...) X(a0) APPLYX13(X, __VA_ARGS__)
+#define APPLYX15(X, a0, ...) X(a0) APPLYX14(X, __VA_ARGS__)
+#define APPLYX16(X, a0, ...) X(a0) APPLYX15(X, __VA_ARGS__)
+#define APPLYX17(X, a0, ...) X(a0) APPLYX16(X, __VA_ARGS__)
+#define APPLYX18(X, a0, ...) X(a0) APPLYX17(X, __VA_ARGS__)
+#define APPLYX19(X, a0, ...) X(a0) APPLYX18(X, __VA_ARGS__)
+#define APPLYX20(X, a0, ...) X(a0) APPLYX19(X, __VA_ARGS__)
+#define APPLYX21(X, a0, ...) X(a0) APPLYX20(X, __VA_ARGS__)
+#define APPLYX22(X, a0, ...) X(a0) APPLYX21(X, __VA_ARGS__)
+#define APPLYX23(X, a0, ...) X(a0) APPLYX22(X, __VA_ARGS__)
+#define APPLYX24(X, a0, ...) X(a0) APPLYX23(X, __VA_ARGS__)
+#define APPLYX25(X, a0, ...) X(a0) APPLYX24(X, __VA_ARGS__)
+#define APPLYX26(X, a0, ...) X(a0) APPLYX25(X, __VA_ARGS__)
+#define APPLYX27(X, a0, ...) X(a0) APPLYX26(X, __VA_ARGS__)
+#define APPLYX28(X, a0, ...) X(a0) APPLYX27(X, __VA_ARGS__)
+#define APPLYX29(X, a0, ...) X(a0) APPLYX28(X, __VA_ARGS__)
+#define APPLYX30(X, a0, ...) X(a0) APPLYX29(X, __VA_ARGS__)
 
-#define APPLYX9(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                b0) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0)
-#define APPLYX10(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1)
-#define APPLYX11(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2)
-#define APPLYX12(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3)
-#define APPLYX13(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4)
-#define APPLYX14(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5)
-#define APPLYX15(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6)
-#define APPLYX16(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7)
-
-#define APPLYX17(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7, \
-                 c0) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7) \
-    X(b0)
-#define APPLYX18(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7, \
-                 c0, c1) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7) \
-    X(c0) X(c1)
-#define APPLYX19(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7, \
-                 c0, c1, c2) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7) \
-    X(c0) X(c1) X(c2)
-#define APPLYX20(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7, \
-                 c0, c1, c2, c3) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7) \
-    X(c0) X(c1) X(c2) X(c3)
-#define APPLYX21(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7, \
-                 c0, c1, c2, c3, c4) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7) \
-    X(c0) X(c1) X(c2) X(c3) X(c4)
-#define APPLYX22(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7, \
-                 c0, c1, c2, c3, c4, c5) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7) \
-    X(c0) X(c1) X(c2) X(c3) X(c4) X(c5)
-#define APPLYX23(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7, \
-                 c0, c1, c2, c3, c4, c5, c6) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7) \
-    X(c0) X(c1) X(c2) X(c3) X(c4) X(c5) X(c6)
-#define APPLYX24(X, a0, a1, a2, a3, a4, a5, a6, a7, \
-                 b0, b1, b2, b3, b4, b5, b6, b7, \
-                 c0, c1, c2, c3, c4, c5, c6, c7) \
-    X(a0) X(a1) X(a2) X(a3) X(a4) X(a5) X(a6) X(a7) \
-    X(b0) X(b1) X(b2) X(b3) X(b4) X(b5) X(b6) X(b7) \
-    X(c0) X(c1) X(c2) X(c3) X(c4) X(c5) X(c6) X(c7)
 #define APPLYX_(M, ...) M(__VA_ARGS__)
 #define APPLYX(X, ...) APPLYX_(PASTE(APPLYX, PP_NARG(__VA_ARGS__)), X, __VA_ARGS__)
 
