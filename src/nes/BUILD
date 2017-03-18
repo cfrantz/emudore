@@ -19,6 +19,8 @@ cc_library(
     deps = [
         ":nes-interface",
         ":mem-interface",
+        "//src:pbmacro",
+        "//proto:apu",
         "//external:imgui",
     ],
 )
@@ -29,6 +31,7 @@ cc_library(
     srcs = ["cartridge.cc"],
     deps = [
         ":nes-interface",
+        "//proto:mappers",
         "//external:gflags",
     ],
 )
@@ -66,6 +69,7 @@ cc_library(
     hdrs = ["nes.h"],
     deps = [
         ":debug_console",
+        "//proto:nes",
         "//src:io",
     ],
 )
@@ -83,6 +87,7 @@ cc_library(
     srcs = ["mapper.cc"],
     deps = [
         ":nes-interface",
+        "//proto:mappers",
     ],
 )
 
@@ -101,6 +106,8 @@ cc_library(
         ":mapper",
         ":cartridge",
         ":ppu",
+        "//src:pbmacro",
+        "//proto:mappers",
     ],
     alwayslink = 1,
 )
@@ -116,6 +123,7 @@ cc_library(
         ":mem-interface",
         ":nes-interface",
         ":ppu",
+        "//proto:nes",
         "//external:imgui",
     ],
 )
@@ -154,6 +162,8 @@ cc_library(
         ":mapper",
         ":mem-interface",
         ":nes-interface",
+        "//proto:ppu",
+        "//src:pbmacro",
         "//src:io",
         "//external:imgui",
     ],

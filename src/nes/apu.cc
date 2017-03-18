@@ -41,6 +41,23 @@ APU::APU(NES *nes)
         init_tables();
 }
 
+void APU::LoadState(proto::APU* state) {
+    pulse_[0].LoadState(state->mutable_pulse(0));
+    pulse_[1].LoadState(state->mutable_pulse(1));
+    triangle_.LoadState(state->mutable_triangle());
+    noise_.LoadState(state->mutable_noise());
+    dmc_.LoadState(state->mutable_dmc());
+}
+
+void APU::SaveState(proto::APU* state) {
+    state->clear_pulse();
+    pulse_[0].SaveState(state->add_pulse());
+    pulse_[1].SaveState(state->add_pulse());
+    triangle_.SaveState(state->mutable_triangle());
+    noise_.SaveState(state->mutable_noise());
+    dmc_.SaveState(state->mutable_dmc());
+}
+
 void APU::StepTimer() {
     if (cycle_ % 2 == 0) {
         pulse_[0].StepTimer();

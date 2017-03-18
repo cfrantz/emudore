@@ -3,6 +3,7 @@
 #include "imgui.h"
 
 #include "src/nes/mem.h"
+#include "src/pbmacro.h"
 
 #include "src/nes/apu.h"
 #include "src/nes/cartridge.h"
@@ -17,6 +18,28 @@ Mem::Mem(NES* nes)
     nes_(nes),
     ram_{0, },
     ppuram_{0, } {
+}
+
+void Mem::LoadState(proto::NES* state) {
+    const auto& ram = state->ram();
+    const auto& ppuram = state->ppu().ppuram();
+    const auto& palette = state->ppu().palette();
+    memcpy(ram_, ram.data(),
+           ram.size() <= sizeof(ram_) ? ram.size() : sizeof(ram_));
+    memcpy(ppuram_, ppuram.data(),
+           ppuram.size() <= sizeof(ppuram_) ? ppuram.size() : sizeof(ppuram_));
+    memcpy(palette_, palette.data(),
+           palette.size() <= sizeof(palette_) ? palette.size() : sizeof(palette_));
+}
+
+void Mem::SaveState(proto::NES* state) {
+    auto* ram = state->mutable_ram();
+    auto* ppuram = state->mutable_ppu()->mutable_ppuram();
+    auto* palette = state->mutable_ppu()->mutable_palette();
+
+    ram->assign((char*)ram_, sizeof(ram_));
+    ppuram->assign((char*)ppuram_, sizeof(ppuram_));
+    palette->assign((char*)palette_, sizeof(palette_));
 }
 
 uint8_t Mem::read_byte(uint16_t addr) {

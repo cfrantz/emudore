@@ -17,6 +17,8 @@ cc_library(
     deps = [
         ":memory",
         ":util",
+        ":pbmacro",
+        "//proto:cpu6502",
         "//external:gflags",
     ],
 )
@@ -96,15 +98,7 @@ cc_binary(
 )
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+cc_library(
+    name = "pbmacro",
+    hdrs = ["pbmacro.h"],
+)

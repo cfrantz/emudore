@@ -1,0 +1,38 @@
+syntax = "proto3";
+package proto;
+
+message PPU {
+    message Sprite {
+        uint32 pattern = 1;
+        uint32 position = 2;
+        uint32 priority = 3;
+        uint32 index = 4;
+    }
+    uint32 control = 1;
+    uint32 status = 2;
+    uint32 mask = 3;
+    uint32 nmi = 4;
+    uint32 v = 5;
+    uint32 t = 6;
+    uint32 x = 7;
+    uint32 w = 8;
+    uint32 f = 9;
+    uint32 ppuregister = 10;
+
+    int32 cycle = 11;
+    int32 scanline = 12;
+    uint64 frame = 13;
+
+    uint32 nametable = 14;
+    uint32 attrtable = 15;
+    uint32 lowtile = 16;
+    uint32 hightile = 17;
+    uint64 tiledata = 18;
+    uint32 oam_addr = 19;
+    uint32 buffered_data = 20;
+
+    repeated Sprite sprite = 21;
+    bytes oam = 22;
+    bytes ppuram = 23;
+    bytes palette = 24;
+}

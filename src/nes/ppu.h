@@ -2,6 +2,7 @@
 #define EMUDORE_SRC_NES_PPU_H
 #include <cstdint>
 #include "src/nes/nes.h"
+#include "proto/ppu.pb.h"
 
 class PPU {
   public:
@@ -27,6 +28,8 @@ class PPU {
     inline int cycle() const { return cycle_; }
     inline Mask mask() const { return mask_; }
     void DebugStuff();
+    void LoadState(proto::PPU* state);
+    void SaveState(proto::PPU* state);
   private:
     void NmiChange();
     void set_control(uint8_t val);
@@ -55,6 +58,7 @@ class PPU {
     void EvaluateSprites();
     void Tick();
 
+
     NES* nes_;
 
     int cycle_;
@@ -75,7 +79,7 @@ class PPU {
         uint8_t occured:1;
         uint8_t previous:1;
         uint8_t output:1;
-        uint8_t delay;
+        uint8_t delay:5;
     } nmi_;
 
     uint8_t nametable_;

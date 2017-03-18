@@ -101,6 +101,17 @@ void Cartridge::SaveSram() {
     fclose(fp);
 }
 
+void Cartridge::SaveState(proto::Mapper *state) {
+    auto* wram = state->mutable_wram();
+    wram->assign((char*)sram_, sizeof(sram_));
+}
+
+void Cartridge::LoadState(proto::Mapper *state) {
+    const auto& wram = state->wram();
+    memcpy(sram_, wram.data(),
+           wram.size() < sizeof(sram_) ? wram.size() : sizeof(sram_));
+}
+
 void Cartridge::PrintHeader() {
     uint8_t *bytes = (uint8_t*)&header_;
     printf("NES header:\n");

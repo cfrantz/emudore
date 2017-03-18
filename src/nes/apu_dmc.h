@@ -2,6 +2,7 @@
 #define EMUDORE_SRC_NES_APU_DMC_H
 #include <cstdint>
 #include "src/nes/nes.h"
+#include "proto/apu.pb.h"
 
 class DMC {
   public:
@@ -20,6 +21,8 @@ class DMC {
     inline uint16_t length() const { return current_length_; }
     void restart();
     void DebugStuff();
+    void LoadState(proto::APUDMC* state);
+    void SaveState(proto::APUDMC* state);
   private:
     uint8_t InternalOutput();
     NES* nes_;

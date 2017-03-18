@@ -2,6 +2,7 @@
 #include "src/nes/mapper.h"
 #include "src/nes/cartridge.h"
 #include "src/nes/ppu.h"
+#include "src/pbmacro.h"
 
 
 class Mapper4: public Mapper {
@@ -10,6 +11,8 @@ class Mapper4: public Mapper {
     uint8_t Read(uint16_t addr) override;
     void Write(uint16_t addr, uint8_t val) override;
     void Emulate() override;
+    void LoadState(proto::Mapper* mstate) override;
+    void SaveState(proto::Mapper* mstate) override;
 
   private:
     int PrgBankOffset(int index);
@@ -43,6 +46,28 @@ Mapper4::Mapper4(NES* nes)
         prg_offset_[1] = PrgBankOffset(1);
         prg_offset_[2] = PrgBankOffset(-2);
         prg_offset_[3] = PrgBankOffset(-1);
+}
+
+void Mapper4::LoadState(proto::Mapper* mstate) {
+    auto* state = mstate->mutable_mmc4();
+    LOAD(irqen, reload, counter, prg_mode, chr_mode);
+    LOAD_FIELD(register_, register_);
+    for(int i=0; i<8; i++) {
+        registers_[i] = state->registers(i);
+        chr_offset_[i] = state->chr_offset(i);
+        if (i<4) prg_offset_[i] = state->prg_offset(i);
+    }
+
+}
+void Mapper4::SaveState(proto::Mapper* mstate) {
+    auto* state = mstate->mutable_mmc4();
+    SAVE(irqen, reload, counter, prg_mode, chr_mode);
+    SAVE_FIELD(register_, register_);
+    for(int i=0; i<8; i++) {
+        state->add_registers(registers_[i]);
+        state->add_chr_offset(chr_offset_[i]);
+        if (i<4) state->add_prg_offset(prg_offset_[i]);
+    }
 }
 
 uint8_t Mapper4::Read(uint16_t addr) {

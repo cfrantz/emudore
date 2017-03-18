@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include "proto/nes.pb.h"
 #include "src/memory.h"
 #include "src/nes/nes.h"
 
@@ -38,6 +39,9 @@ class Mem: public Memory {
             addr -= 16;
         palette_[addr] = val;
     }
+
+    void LoadState(proto::NES* state);
+    void SaveState(proto::NES* state);
 
 
   private:

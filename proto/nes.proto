@@ -1,0 +1,15 @@
+syntax = "proto3";
+package proto;
+
+import "proto/apu.proto";
+import "proto/cpu6502.proto";
+import "proto/mappers.proto";
+import "proto/ppu.proto";
+
+message NES {
+    APU apu = 1;
+    CPU6502 cpu = 2;
+    PPU ppu = 3;
+    Mapper mapper = 4;
+    bytes ram = 5;
+}

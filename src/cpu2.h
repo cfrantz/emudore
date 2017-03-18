@@ -1,14 +1,18 @@
 #ifndef EMUDORE_SRC_CPU2_H
 #define EMUDORE_SRC_CPU2_H
+#include <functional>
 #include <cstdint>
 #include <string>
 #include "src/memory.h"
+#include "proto/cpu6502.pb.h"
 
 class Cpu {
   public:
     Cpu() : Cpu(nullptr) {}
     Cpu(Memory* mem);
 
+    void SaveState(proto::CPU6502 *state);
+    void LoadState(proto::CPU6502 *state);
     void Reset();
     int Emulate();
     std::string Disassemble(uint16_t *nexti=nullptr, bool tracemode=false);
@@ -84,15 +88,30 @@ class Cpu {
         ZeroPageX,
         ZeroPageY,
     };
+
+    inline void set_write_cb(std::function<void(Cpu*, uint16_t, uint8_t)> cb) {
+        write_cb_ = cb;
+    }
+    inline void set_exec_cb(std::function<void(Cpu*, uint16_t, uint8_t)> cb) {
+        exec_cb_ = cb;
+    }
+    inline void set_read_cb(std::function<void(Cpu*, uint16_t, uint8_t)> cb) {
+        read_cb_ = cb;
+    }
   private:
-    uint8_t inline Read(uint16_t addr) const { return mem_->read_byte(addr); }
+    uint8_t inline Read(uint16_t addr) {
+        uint8_t val = mem_->read_byte(addr);
+        if (read_cb_) read_cb_(this, addr, val);
+        return val;
+    }
     void inline Write(uint16_t addr, uint8_t val) {
+        if (write_cb_) write_cb_(this, addr, val);
         mem_->write_byte(addr, val);
     }
-    uint16_t inline Read16(uint16_t addr) const {
+    uint16_t inline Read16(uint16_t addr) {
         return Read(addr) | Read(addr+1) << 8;
     }
-    uint16_t inline Read16Bug(uint16_t addr) const {
+    uint16_t inline Read16Bug(uint16_t addr) {
         // When reading the high byte of the word, the address
         // increments, but doesn't carry from the low address byte to the
         // high address byte.
@@ -147,8 +166,12 @@ class Cpu {
 
     static const int TRACEBUFSZ = 1000000;
     static const int SLOP = 1000;
-    char tracebuf_[TRACEBUFSZ + SLOP];
+    char tracebuf_[TRACEBUFSZ][80];
     int tbptr_;
+    bool halted_;
+    std::function<void(Cpu*, uint16_t, uint8_t)> write_cb_;
+    std::function<void(Cpu*, uint16_t, uint8_t)> exec_cb_;
+    std::function<void(Cpu*, uint16_t, uint8_t)> read_cb_;;
 };
 
 #endif // EMUDORE_SRC_CPU2_H

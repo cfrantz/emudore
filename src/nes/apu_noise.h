@@ -1,6 +1,7 @@
 #ifndef EMUDORE_SRC_NES_APU_NOISE_H
 #define EMUDORE_SRC_NES_APU_NOISE_H
 #include <cstdint>
+#include "proto/apu.pb.h"
 
 class Noise {
   public:
@@ -16,6 +17,8 @@ class Noise {
     void set_length(uint8_t val);
     inline uint16_t length() const { return length_value_; }
     void DebugStuff();
+    void SaveState(proto::APUNoise *state);
+    void LoadState(proto::APUNoise *state);
   private:
     uint8_t InternalOutput();
     bool enabled_;

@@ -4,6 +4,7 @@
 #include <map>
 #include <cstdint>
 #include "src/nes/nes.h"
+#include "proto/mappers.pb.h"
 
 class Mapper {
   public:
@@ -16,6 +17,8 @@ class Mapper {
     virtual void Write(uint16_t addr, uint8_t val) = 0;
     virtual void Emulate() {}
     virtual void DebugStuff() {}
+    virtual void LoadState(proto::Mapper *state) {}
+    virtual void SaveState(proto::Mapper *state) {}
   protected:
     NES* nes_;
 };

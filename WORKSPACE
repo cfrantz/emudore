@@ -21,3 +21,12 @@ bind(
     name = "imgui",
     actual = "@imgui_git//:imgui",
 )
+
+######################################################################
+# protobuf
+######################################################################
+git_repository(
+	name = "google_protobuf",
+	remote = "https://github.com/google/protobuf.git",
+	tag = "v3.1.0"
+)

@@ -1,5 +1,6 @@
 #include "src/nes/mapper.h"
 
+#include "src/pbmacro.h"
 #include "src/nes/cartridge.h"
 
 class Mapper2: public Mapper {
@@ -9,6 +10,16 @@ class Mapper2: public Mapper {
         prg_banks_(nes_->cartridge()->prglen() / 0x4000),
         prg_bank1_(0),
         prg_bank2_(prg_banks_ - 1) {}
+
+    void LoadState(proto::Mapper* mstate) {
+        auto* state = mstate->mutable_unrom();
+        LOAD(prg_banks, prg_bank1, prg_bank2);
+    }
+
+    void SaveState(proto::Mapper* mstate) {
+        auto* state = mstate->mutable_unrom();
+        SAVE(prg_banks, prg_bank1, prg_bank2);
+    }
 
     uint8_t Read(uint16_t addr) override {
         if (addr < 0x2000) {

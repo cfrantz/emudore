@@ -2,6 +2,7 @@
 #include <gflags/gflags.h>
 #include <unistd.h>
 #include "imgui.h"
+#include "google/protobuf/text_format.h"
 
 #include "src/nes/nes.h"
 
@@ -20,6 +21,7 @@
 DEFINE_string(fm2, "", "FM2 Movie file.");
 DEFINE_double(fps, 60.0988, "Desired NES fps.");
 
+using namespace std::placeholders;
 
 const uint32_t standard_palette[] = {
     0xFF666666, 0xFF002A88, 0xFF1412A7, 0xFF3B00A4,
@@ -80,6 +82,16 @@ NES::NES() :
                       ((standard_palette[i] >> 16 ) & 0xFF) |
                       ((standard_palette[i] & 0xFF) << 16);
     }
+    cpu_->set_write_cb(std::bind(&NES::Watcher, this,
+        "PC=%04x wrote %02x to %04x.  A=%02x X=%02x Y=%02x SP=%04x[%04x]",
+        &watches_, _1, _2, _3));
+
+    cpu_->set_exec_cb(std::bind(&NES::Watcher, this,
+        "PC=%04x Exec %02x, inst=%02x.  A=%02x X=%02x Y=%02x SP=%04x[%04x]",
+        &xwatches_, _1, _2, _3));
+    cpu_->set_read_cb(std::bind(&NES::Watcher, this,
+        "PC=%04x Exec %02x, inst=%02x.  A=%02x X=%02x Y=%02x SP=%04x[%04x]",
+        &rwatches_, _1, _2, _3));
 
     console_.RegisterCommand("db", "Hexdump bytes", [=](int argc, char **argv){
         this->HexdumpBytes(argc, argv);
@@ -129,6 +141,22 @@ NES::NES() :
     console_.RegisterCommand("z2cheat", "Zelda2 Cheat", [=](int argc, char **argv){
         Z2Cheat(argc, argv);
     });
+    console_.RegisterCommand("find", "Find byte in RAM", [=](int argc, char **argv){
+        this->Find(argc, argv);
+    });
+    console_.RegisterCommand("ls", "Load State", [=](int argc, char **argv){
+        this->CmdLoadState(argc, argv);
+    });
+    console_.RegisterCommand("ss", "Save State", [=](int argc, char **argv){
+        this->CmdSaveState(argc, argv);
+    });
+    console_.RegisterCommand("setw", "Set a write watch", std::bind(&NES::SetWatch, this, _1, _2));
+    console_.RegisterCommand("delw", "Del a write watch", std::bind(&NES::DelWatch, this, _1, _2));
+
+    console_.RegisterCommand("setwx", "Set an exec watch", std::bind(&NES::SetWatch, this, _1, _2));
+    console_.RegisterCommand("delwx", "Del an exec watch", std::bind(&NES::DelWatch, this, _1, _2));
+    console_.RegisterCommand("setwr", "Set an read watch", std::bind(&NES::SetWatch, this, _1, _2));
+    console_.RegisterCommand("delwr", "Del an read watch", std::bind(&NES::DelWatch, this, _1, _2));
 }
 
 void NES::LoadFile(const std::string& filename) {
@@ -136,6 +164,82 @@ void NES::LoadFile(const std::string& filename) {
     mapper_ = MapperRegistry::New(this, cart_->mapper());
     if (!FLAGS_fm2.empty()) {
         movie_->Load(FLAGS_fm2);
+    }
+}
+
+void NES::CmdLoadState(int argc, char **argv) {
+    if (argc < 2) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <filename>", argv[0]);
+    }
+    std::string file(argv[1]);
+    LoadState(file);
+}
+
+void NES::CmdSaveState(int argc, char **argv) {
+    if (argc < 2) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <filename> [text]", argv[0]);
+    }
+    std::string file(argv[1]);
+    bool text = false;
+    if (argc == 3 && argv[2][0] == 't')
+        text = true;
+
+    SaveState(file, text);
+}
+
+void NES::LoadState(const std::string& filename) {
+    FILE* fp;
+    std::string data;
+    if ((fp = fopen(filename.c_str(), "rb")) != nullptr) {
+        fseek(fp, 0, SEEK_END);
+        data.resize(ftell(fp));
+        fseek(fp, 0, SEEK_SET);
+        fread(&data.front(), 1, data.size(), fp);
+        fclose(fp);
+    } else {
+        console_.AddLog("[error] Could not LoadState from %s",
+                        filename.c_str());
+    }
+
+    state_.Clear();
+    if (!state_.ParseFromString(data)) {
+        if (!google::protobuf::TextFormat::ParseFromString(data, &state_)) {
+            console_.AddLog("[error] Could not parse data from %s",
+                            filename.c_str());
+            return;
+        }
+    }
+
+    apu_->LoadState(state_.mutable_apu());
+    cpu_->LoadState(state_.mutable_cpu());
+    mem_->LoadState(&state_);
+    ppu_->LoadState(state_.mutable_ppu());
+    mapper_->LoadState(state_.mutable_mapper());
+    cart_->LoadState(state_.mutable_mapper());
+}
+
+void NES::SaveState(const std::string& filename, bool text) {
+    apu_->SaveState(state_.mutable_apu());
+    cpu_->SaveState(state_.mutable_cpu());
+    mem_->SaveState(&state_);
+    ppu_->SaveState(state_.mutable_ppu());
+    mapper_->SaveState(state_.mutable_mapper());
+    cart_->SaveState(state_.mutable_mapper());
+
+    std::string data;
+    if (text) {
+        google::protobuf::TextFormat::PrintToString(state_, &data);
+    } else {
+        state_.SerializeToString(&data);
+    }
+    FILE* fp;
+    if ((fp = fopen(filename.c_str(), "wb")) != nullptr) {
+        fwrite(data.data(), 1, data.size(), fp);
+        fclose(fp);
+    } else {
+        console_.AddLog("[error] Could not SaveState to %s", filename.c_str());
     }
 }
 
@@ -506,5 +610,84 @@ void NES::Unassemble(int argc, char **argv) {
     for(int i=0; i<len; i++) {
         std::string s = cpu_->Disassemble(&addr);
         console_.AddLog("%s", s.c_str());
+    }
+}
+
+void NES::Find(int argc, char **argv) {
+    if (argc < 1) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <byte>", argv[0]);
+        return;
+    }
+
+    uint8_t byte = strtoul(argv[1], 0, 0);
+    for(int i=0; i<2048; i++) {
+        uint8_t val = mem_->read_byte_no_io(i);
+        if (val == byte) {
+            console_.AddLog("%04x: %02x", i, byte);
+        }
+    }
+    for(int i=0x6000; i<0x8000; i++) {
+        uint8_t val = mem_->read_byte_no_io(i);
+        if (val == byte) {
+            console_.AddLog("%04x: %02x", i, byte);
+        }
+    }
+}
+
+void NES::SetWatch(int argc, char **argv) {
+    if (argc < 2) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr>", argv[0]);
+        return;
+    }
+    char type = argv[0][4] ? argv[0][4] : 'w';
+    auto* watch = &watches_;
+    if (type == 'x') watch = &xwatches_;
+    if (type == 'r') watch = &rwatches_;
+
+    Watch w = {0, -1};
+    w.addr = strtoul(argv[1], 0, 0);
+    if (argc == 3)
+        w.val = strtoul(argv[2], 0, 0);
+
+    watch->push_back(w);
+    console_.AddLog("Watches (type=%c):", type);
+    for(unsigned int i=0; i<watch->size(); i++) {
+        w = watch->at(i);
+        console_.AddLog("%u: %04x = %x", i, w.addr, w.val);
+    }
+}
+
+void NES::DelWatch(int argc, char **argv) {
+    if (argc < 1) {
+        console_.AddLog("[error] %s: Wrong number of arguments.", argv[0]);
+        console_.AddLog("[error] %s <addr>", argv[0]);
+        return;
+    }
+    char type = argv[0][4] ? argv[0][4] : 'w';
+    auto* watch = &watches_;
+    if (type == 'x') watch = &xwatches_;
+    if (type == 'r') watch = &rwatches_;
+
+    uint16_t n = strtoul(argv[1], 0, 0);
+    auto it = watch->begin() + n;
+    if (it < watch->end()) watch->erase(it);
+    console_.AddLog("Watches (type=%c):", type);
+    for(unsigned int i=0; i<watch->size(); i++) {
+        auto w = watch->at(i);
+        console_.AddLog("%u: %04x = %x", i, w.addr, w.val);
+    }
+}
+
+void NES::Watcher(const char *msg, const std::vector<Watch>* watch,
+                  Cpu* cpu, uint16_t addr, uint8_t val) {
+    for(const auto w : *watch) {
+        if (w.addr == addr && (w.val == -1 || w.val == val)) {
+            uint16_t sp = 0x100 | cpu->sp();
+            uint16_t tos = mem_->Read(sp+1) | mem_->Read(sp+2) << 8;
+            console_.AddLog(msg,
+                    cpu->pc(), val, addr, cpu->a(), cpu->x(), cpu->y(), sp, tos);
+        }
     }
 }

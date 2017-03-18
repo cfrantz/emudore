@@ -13,6 +13,9 @@ class Mapper1: public Mapper {
     void Emulate() override;
     void DebugStuff() override;
 
+    void LoadState(proto::Mapper* state) override;
+    void SaveState(proto::Mapper* state) override;
+
   private:
     int PrgBankOffset(int index);
     int ChrBankOffset(int index);

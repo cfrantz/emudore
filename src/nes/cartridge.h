@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "src/nes/nes.h"
+#include "proto/mappers.pb.h"
 
 class Cartridge {
   public:
@@ -55,6 +56,8 @@ class Cartridge {
     void Emulate();
     void SaveSram();
 
+    void LoadState(proto::Mapper* state);
+    void SaveState(proto::Mapper* state);
   private:
     NES* nes_;
     struct iNESHeader header_;

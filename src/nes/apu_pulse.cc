@@ -1,5 +1,6 @@
 #include "imgui.h"
 #include "src/nes/apu_pulse.h"
+#include "src/pbmacro.h"
 
 #include <cstdint>
 
@@ -32,6 +33,52 @@ Pulse::Pulse(uint8_t channel)
     envelope_period_(0), envelope_value_(0), envelope_volume_(0),
     constant_volume_(0),
     dbgp_(0) {}
+
+void Pulse::SaveState(proto::APUPulse* state) {
+    SAVE(enabled,
+         length_enabled,
+         length_value,
+         timer_period,
+         timer_value,
+         duty_mode,
+         duty_value,
+         sweep_enable,
+         sweep_reload,
+         sweep_negate,
+         sweep_shift,
+         sweep_period,
+         sweep_value,
+         envelope_enable,
+         envelope_start,
+         envelope_loop,
+         envelope_period,
+         envelope_value,
+         envelope_volume,
+         constant_volume);
+}
+
+void Pulse::LoadState(proto::APUPulse* state) {
+    LOAD(enabled,
+         length_enabled,
+         length_value,
+         timer_period,
+         timer_value,
+         duty_mode,
+         duty_value,
+         sweep_enable,
+         sweep_reload,
+         sweep_negate,
+         sweep_shift,
+         sweep_period,
+         sweep_value,
+         envelope_enable,
+         envelope_start,
+         envelope_loop,
+         envelope_period,
+         envelope_value,
+         envelope_volume,
+         constant_volume);
+}
 
 uint8_t Pulse::InternalOutput() {
     if (!enabled_) return 0;

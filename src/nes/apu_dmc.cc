@@ -1,6 +1,7 @@
 #include "imgui.h"
 #include "src/nes/apu_dmc.h"
 #include "src/nes/mem.h"
+#include "src/pbmacro.h"
 
 static uint8_t dmc_table[16] = {
     214, 190, 170, 160, 143, 127, 113, 107, 95, 80, 71, 64, 53, 42, 36, 27,
@@ -15,6 +16,24 @@ DMC::DMC(NES* nes) :
     shift_register_(0), bit_count_(0), tick_value_(0), tick_period_(0),
     loop_(0), irq_(0),
     dbgp_(0) {}
+
+void DMC::SaveState(proto::APUDMC *state) {
+    SAVE(enabled,
+         value,
+         sample_address, sample_length,
+         current_address, current_length,
+         shift_register, bit_count, tick_value, tick_period,
+         loop, irq);
+}
+
+void DMC::LoadState(proto::APUDMC *state) {
+    LOAD(enabled,
+         value,
+         sample_address, sample_length,
+         current_address, current_length,
+         shift_register, bit_count, tick_value, tick_period,
+         loop, irq);
+}
 
 uint8_t DMC::Output() {
     dbgbuf_[dbgp_] = value_;

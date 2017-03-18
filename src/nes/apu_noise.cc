@@ -1,5 +1,6 @@
 #include "imgui.h"
 #include "src/nes/apu_noise.h"
+#include "src/pbmacro.h"
 
 static uint8_t length_table[32] = {
     10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
@@ -21,6 +22,30 @@ Noise::Noise()
     envelope_period_(0), envelope_value_(0), envelope_volume_(0),
     constant_volume_(0),
     dbgp_(0) {}
+
+void Noise::SaveState(proto::APUNoise* state) {
+    SAVE(enabled,
+         mode,
+         shift_register,
+         length_enabled,
+         length_value,
+         timer_period, timer_value,
+         envelope_enable, envelope_start, envelope_loop,
+         envelope_period, envelope_value, envelope_volume,
+         constant_volume);
+}
+
+void Noise::LoadState(proto::APUNoise* state) {
+    LOAD(enabled,
+         mode,
+         shift_register,
+         length_enabled,
+         length_value,
+         timer_period, timer_value,
+         envelope_enable, envelope_start, envelope_loop,
+         envelope_period, envelope_value, envelope_volume,
+         constant_volume);
+}
 
 uint8_t Noise::InternalOutput() {
     if (!enabled_) return 0;

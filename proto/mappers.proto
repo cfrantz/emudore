@@ -1,0 +1,45 @@
+syntax = "proto3";
+package proto;
+
+message MMC1 {
+    uint32 shift_register = 1;
+    uint32 control = 2;
+    uint32 prg_mode = 3;
+    uint32 chr_mode = 4;
+    uint32 prg_bank = 5;
+    uint32 chr_bank0 = 6;
+    uint32 chr_bank1 = 7;
+
+    repeated uint32 prg_offset = 8;
+    repeated uint32 chr_offset = 9;
+}
+
+message XXROM {
+    uint32 prg_banks = 1;
+    uint32 prg_bank1 = 2;
+    uint32 prg_bank2 = 3;
+}
+
+message MMC4 {
+    bool irqen = 1;
+    uint32 register = 2;
+    uint32 reload = 3;
+    uint32 counter = 4;
+    uint32 prg_mode = 5;
+    uint32 chr_mode = 6;
+    repeated uint32 registers = 7;
+    repeated uint32 prg_offset = 8;
+    repeated uint32 chr_offset = 9;
+}
+
+
+message Mapper {
+    int32 mapper = 1000000;
+    bytes wram = 1000001;
+    oneof hardware {
+        MMC1 mmc1 = 1;
+        XXROM unrom = 2;
+        XXROM cnrom = 3;
+        MMC4 mmc4 = 4;
+    }
+}

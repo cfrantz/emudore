@@ -4,6 +4,7 @@
 #include <atomic>
 #include <SDL2/SDL.h>
 
+#include "proto/apu.pb.h"
 #include "src/nes/apu_dmc.h"
 #include "src/nes/apu_noise.h"
 #include "src/nes/apu_pulse.h"
@@ -29,6 +30,8 @@ class APU {
     void Emulate();
     void DebugStuff();
 
+    void LoadState(proto::APU* state);
+    void SaveState(proto::APU* state);
     static const int BUFFERLEN = 1024;
   private:
     void set_frame_counter(uint8_t val);

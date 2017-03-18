@@ -1,5 +1,6 @@
 #include "src/nes/mapper1.h"
 
+#include "src/pbmacro.h"
 #include "src/nes/cartridge.h"
 
 Mapper1::Mapper1(NES* nes)
@@ -10,6 +11,34 @@ Mapper1::Mapper1(NES* nes)
     prg_bank_(0), chr_bank0_(0), chr_bank1_(0),
     prg_offset_{0, 0}, chr_offset_{0, 0} {
         prg_offset_[1] = PrgBankOffset(-1);
+}
+
+void Mapper1::LoadState(proto::Mapper* mstate) {
+    auto* state = mstate->mutable_mmc1();
+    LOAD(shift_register,
+         control,
+         prg_mode, chr_mode,
+         prg_bank, chr_bank0, chr_bank1);
+
+    prg_offset_[0] = state->prg_offset(0);
+    prg_offset_[1] = state->prg_offset(1);
+    chr_offset_[0] = state->chr_offset(0);
+    chr_offset_[1] = state->chr_offset(1);
+}
+
+void Mapper1::SaveState(proto::Mapper* mstate) {
+    auto* state = mstate->mutable_mmc1();
+    SAVE(shift_register,
+         control,
+         prg_mode, chr_mode,
+         prg_bank, chr_bank0, chr_bank1);
+
+    state->clear_prg_offset();
+    state->add_prg_offset(prg_offset_[0]);
+    state->add_prg_offset(prg_offset_[1]);
+    state->clear_chr_offset();
+    state->add_chr_offset(chr_offset_[0]);
+    state->add_chr_offset(chr_offset_[1]);
 }
 
 void Mapper1::DebugStuff() {

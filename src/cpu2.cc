@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <gflags/gflags.h>
 #include "src/cpu2.h"
+#include "src/pbmacro.h"
 
 DEFINE_bool(trace, false, "Enable per cycle CPU tracing");
 
@@ -28,7 +29,18 @@ Cpu::Cpu(Memory* mem) :
     stall_(0),
     nmi_pending_(false),
     irq_pending_(false),
-    tbptr_(0) {}
+    tbptr_(0),
+    halted_(false) {}
+
+void Cpu::SaveState(proto::CPU6502 *state) {
+    state->set_flags(flags_.value);
+    SAVE(pc, sp, a, x, y, cycles, stall, nmi_pending, irq_pending);
+}
+
+void Cpu::LoadState(proto::CPU6502 *state) {
+    flags_.value = state->flags();
+    LOAD(pc, sp, a, x, y, cycles, stall, nmi_pending, irq_pending);
+}
 
 void Cpu::Reset() {
     pc_ = Read16(0xFFFC);
@@ -114,8 +126,9 @@ std::string Cpu::Disassemble(uint16_t* nexti, bool tracemode) {
 }
 
 void Cpu::Flush() {
-    fputs(tracebuf_, stderr);
-    tbptr_ = 0;
+    for(int i=tbptr_+1; i != tbptr_; i=(i+1)%TRACEBUFSZ) {
+        fputs(tracebuf_[i], stderr);
+    }
 }
 
 void Cpu::Emit(const char *buf, int how) {
@@ -125,18 +138,19 @@ void Cpu::Emit(const char *buf, int how) {
         return;
     if (how < 0) {
         int n = -how;
-        tbptr_ += sprintf(tracebuf_ + tbptr_, "%*s  %s\n", n, "", buf);
+        sprintf(tracebuf_[tbptr_], "%*s  %s\n", n, "", buf);
     } else if (how == 1) {
         uint64_t dt = ts - last_ts;
-        tbptr_ += sprintf(tracebuf_ + tbptr_, "%" PRIu64 ": %s\n", dt, buf);
+        sprintf(tracebuf_[tbptr_], "%" PRIu64 ": %s\n", dt, buf);
         last_ts = ts;
     } else {
-        tbptr_ += sprintf(tracebuf_ + tbptr_, "%" PRIu64 ": %s\n", ts, buf);
+        sprintf(tracebuf_[tbptr_], "%" PRIu64 ": %s\n", ts, buf);
         last_ts = ts;
     }
-    if (tbptr_ > TRACEBUFSZ) {
-        Flush();
-    }
+    tbptr_ = (tbptr_ + 1) % TRACEBUFSZ;
+//    if (tbptr_ > TRACEBUFSZ) {
+//        Flush();
+//    }
 }
 
 
@@ -150,6 +164,8 @@ void Cpu::Trace() {
 }
 
 int Cpu::Emulate(void) {
+    if (halted_)
+        return 1;
     if (stall_ > 0) {
       stall_--;
       return 1;
@@ -183,6 +199,7 @@ int Cpu::Emulate(void) {
     uint8_t opcode = Read(pc_);
     InstructionInfo info = info_[opcode];
     Trace();
+    exec_cb_(this, pc_, opcode);
 
 #undef TESTCPU
 #ifdef TESTCPU
@@ -764,6 +781,8 @@ int Cpu::Emulate(void) {
     /* Unknown or illegal instruction */
     default:
         fprintf(stderr, "Illegal opcode %02x at %04x\n", opcode, fetchpc);
+        halted_ = true;
+        Flush();
     }
     return cycles_ - cycles;
 }

@@ -1,0 +1,118 @@
+syntax = "proto3";
+package proto;
+
+message APUPulse {
+    message Registers {
+        uint32 control = 1;
+        uint32 sweep = 2;
+        uint32 timer_low = 3;
+        uint32 timer_high = 4;
+    } 
+    Registers reg = 1;
+
+    bool enabled = 2;
+
+    bool length_enabled = 3;
+    uint32 length_value = 4;
+    uint32 timer_period = 5;
+    uint32 timer_value = 6;
+    uint32 duty_mode = 7;
+    uint32 duty_value = 8;
+
+    bool sweep_enable = 9;
+    bool sweep_reload = 10;
+    bool sweep_negate = 11;
+    uint32 sweep_shift = 12;
+    uint32 sweep_period = 13;
+    uint32 sweep_value = 14;
+
+    bool envelope_enable = 15;
+    bool envelope_start = 16;
+    bool envelope_loop = 17;
+    uint32 envelope_period = 18;
+    uint32 envelope_value = 19;
+    uint32 envelope_volume = 20;
+    
+    uint32 constant_volume = 21;
+}
+
+message APUTriangle {
+    message Registers {
+        uint32 control = 1;
+        uint32 timer_low = 3;
+        uint32 timer_high = 4;
+    } 
+    Registers reg = 1;
+    
+    bool enabled = 2;
+
+    bool length_enabled = 3;
+    uint32 length_value = 4;
+    uint32 timer_period = 5;
+    uint32 timer_value = 6;
+    uint32 duty_value = 7;
+
+    bool counter_reload = 8;
+    uint32 counter_period = 9;
+    uint32 counter_value = 10;
+}
+
+message APUNoise {
+    message Registers {
+        uint32 control = 1;
+        uint32 period = 2;
+        uint32 length = 3;
+    } 
+    Registers reg = 1;
+
+    bool enabled = 2;
+    bool mode = 3;
+
+    bool length_enabled = 4;
+    uint32 length_value = 5;
+    uint32 timer_period = 6;
+    uint32 timer_value = 7;
+
+    bool envelope_enable = 8;
+    bool envelope_start = 9;
+    bool envelope_loop = 10;
+    uint32 envelope_period = 11;
+    uint32 envelope_value = 12;
+    uint32 envelope_volume = 13;
+    
+    uint32 constant_volume = 14;
+    uint32 shift_register = 15;
+}
+
+message APUDMC {
+    message Registers {
+        uint32 control = 1;
+        uint32 value = 2;
+        uint32 address = 3;
+        uint32 length = 4;
+    } 
+    Registers reg = 1;
+
+    bool enabled = 2;
+    uint32 value = 3;
+
+    uint32 sample_address = 4;
+    uint32 sample_length = 5;
+    uint32 current_address = 6;
+    uint32 current_length = 7;
+
+    uint32 shift_register = 8;
+    uint32 bit_count = 9;
+    uint32 tick_value = 10;
+    uint32 tick_period = 11;
+
+    bool loop = 12;
+    bool irq = 13;
+}
+
+message APU {
+    repeated APUPulse pulse = 1;
+    APUTriangle triangle = 2;
+    APUNoise noise = 3;
+    APUDMC dmc = 4;
+}

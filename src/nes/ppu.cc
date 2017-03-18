@@ -3,12 +3,31 @@
 #include "imgui.h"
 #include <SDL2/SDL_opengl.h>
 
+#include "src/pbmacro.h"
 #include "src/nes/cartridge.h"
 #include "src/nes/fm2.h"
 #include "src/nes/ppu.h"
 #include "src/nes/mem.h"
 #include "src/nes/mapper.h"
 #include "src/io.h"
+
+namespace {
+template<typename T>
+uint32_t IntVal(const T* thing) {
+    uint32_t val;
+    static_assert(sizeof(T) <= sizeof(uint32_t),
+            "IntVal is only for small structs");
+    memcpy(&val, thing, sizeof(T));
+    return val;
+}
+
+template<typename T>
+void IntVal(T* thing, uint32_t val) {
+    static_assert(sizeof(T) <= sizeof(uint32_t),
+            "IntVal is only for small structs");
+    memcpy(thing, &val, sizeof(T));
+}
+}
 
 PPU::PPU(NES* nes)
     : nes_(nes),
@@ -24,6 +43,53 @@ PPU::PPU(NES* nes)
     oam_addr_(0), buffered_data_(0),
     picture_{0,} {
     BuildExpanderTables();
+}
+
+void PPU::LoadState(proto::PPU* state) {
+    LOAD(cycle, scanline, frame,
+         v, t, x, w, f,
+         nametable, attrtable, lowtile, hightile, tiledata,
+         oam_addr, buffered_data);
+    LOAD_FIELD(ppuregister, register_);
+    IntVal(&nmi_, state->nmi());
+    IntVal(&control_, state->control());
+    IntVal(&mask_, state->mask());
+    IntVal(&status_, state->status());
+
+    const auto& oam = state->oam();
+    memcpy(oam_, oam.data(),
+            oam.size() < sizeof(oam_) ? oam.size() : sizeof(oam_));
+
+    sprite_.count = state->sprite_size();
+    for(int i=0; i<sprite_.count; i++) {
+        sprite_.pattern[i] = state->sprite(i).pattern();
+        sprite_.position[i] = state->sprite(i).position();
+        sprite_.priority[i] = state->sprite(i).priority();
+        sprite_.index[i] = state->sprite(i).index();
+    }
+}
+
+void PPU::SaveState(proto::PPU* state) {
+    SAVE(cycle, scanline, frame,
+         v, t, x, w, f,
+         nametable, attrtable, lowtile, hightile, tiledata,
+         oam_addr, buffered_data);
+    SAVE_FIELD(ppuregister, register_);
+    state->set_nmi(IntVal(&nmi_));
+    state->set_control(IntVal(&control_));
+    state->set_mask(IntVal(&mask_));
+    state->set_status(IntVal(&status_));
+
+    auto* oam = state->mutable_oam();
+    oam->assign((char*)oam_, sizeof(oam_));
+    state->clear_sprite();
+    for(int i=0; i<sprite_.count; i++) {
+        auto* sprite = state->add_sprite();
+        sprite->set_pattern(sprite_.pattern[i]);
+        sprite->set_position(sprite_.position[i]);
+        sprite->set_priority(sprite_.priority[i]);
+        sprite->set_index(sprite_.index[i]);
+    }
 }
 
 void PPU::Reset() {
@@ -661,9 +727,10 @@ void PPU::DebugVram(bool* active, uint8_t prefcolor[2][256]) {
         ImGui::EndGroup();
     };
 
-    auto sprites = [=](int x0, int y0, int line, const Position* nt) {
+    auto sprites = [=](int x0, int y0, int line, int nto) {
         char buf[8];
         for(int i=0; i<256; i+=4) {
+            const Position *nt = &ntofs[nto];
             int y = oam_[i + 0];
             if (y != line)
                 continue;
@@ -673,6 +740,10 @@ void PPU::DebugVram(bool* active, uint8_t prefcolor[2][256]) {
             int x = oam_[i + 3] + x0;
             int table;
             int ysz;
+            if (x > 256) {
+                nt = &ntofs[(nto+1) % 4];
+                x -= 256;
+            }
             if (control_.spritesize) {
                 table = t & 1;
                 t &= 0xFE;
@@ -706,26 +777,31 @@ void PPU::DebugVram(bool* active, uint8_t prefcolor[2][256]) {
     ImGui::PopStyleVar();
 
     const ImU32 col32 = ImColor(ImVec4(1.0f, 1.0f, 0.4f, 1.0f));
-    struct Position *nt = ntofs;
+    struct Position *nt;
     int lx=0, ly=0, lnt=0;
     for(int i=0; i<240; i++) {
-        int x, y, xp, yp;;
-        sprites(lx, ly, i, nt);
+        int x, y, nto, xp, yp;;
+        sprites(lx, ly, i, lnt);
         x = scrollreg_[i].x;
         y = scrollreg_[i].y;
-        if (i && lx==x && ly==y && lnt==scrollreg_[i].nt)
+        nto = scrollreg_[i].nt;
+        if (i && lx==x && ly==y && lnt==nto)
             continue;
-        lx = x; ly = y; lnt = scrollreg_[i].nt;
+        lx = x; ly = y; lnt = nto;
         y += i;
-        nt = ntofs + scrollreg_[i].nt;
+        nt = &ntofs[nto];
         ImGui::Text("%d: x=%d y=%d nt=%d", i, x, y, int(nt-ntofs));
         xp = pos[nt->x + x/8][nt->y + y/8].x + (x & 7) * 2;
         yp = pos[nt->x + x/8][nt->y + y/8].y + (y & 7) * 2;
         ImVec2 ul = ImVec2(xp - 2, yp - 2);
         x += 255; y++;
         for(int j=i+1; j<240; j++, y++) {
-            if (scrollreg_[j].x != lx) // || scrollreg_[j].nt >= 0)
+            if (scrollreg_[j].x != lx || scrollreg_[j].nt != lnt)
                 break;
+        }
+        if (x > 256) {
+            nt = &ntofs[(nto + 1) % 4];
+            x -= 256;
         }
         xp = pos[nt->x + x/8][nt->y + y/8].x + (x & 7) * 2;
         yp = pos[nt->x + x/8][nt->y + y/8].y + (y & 7) * 2;

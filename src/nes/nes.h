@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include "src/io.h"
 #include "src/nes/debug_console.h"
+#include "proto/nes.pb.h"
 
 class APU;
 class Cpu;
@@ -48,6 +49,9 @@ class NES {
     bool Emulate();
     bool EmulateFrame();
 
+    void LoadState(const std::string& filename);
+    void SaveState(const std::string& filename, bool text=false);
+
     static const int frequency = 1789773;
     static constexpr double frame_counter_rate = frequency / 240.0;
     static constexpr double sample_rate = frequency / 44100.0;
@@ -65,6 +69,7 @@ class NES {
     Mem* mem_;
     FM2Movie* movie_;
     PPU* ppu_;
+    proto::NES state_;
 
     uint32_t palette_[64];
     bool pause_, step_, debug_, reset_;
@@ -79,10 +84,25 @@ class NES {
     void WriteBytesInc(int argc, char **argv);
     void WriteWords(int argc, char **argv);
     void Z2Cheat(int argc, char **argv);
+    void CmdLoadState(int argc, char **argv);
+    void CmdSaveState(int argc, char **argv);
 
     void NailByte(int argc, char **argv);
     void UnnailByte(int argc, char **argv);
     void Unassemble(int argc, char **argv);
+    void Find(int argc, char **argv);
+    void SetWatch(int argc, char **argv);
+    void DelWatch(int argc, char **argv);
+
+    struct Watch {
+        uint16_t addr;
+        int val;
+    };
+    void Watcher(const char* msg, const std::vector<Watch>* watch,
+            Cpu* cpu, uint16_t addr, uint8_t val);
+    std::vector<Watch> watches_;
+    std::vector<Watch> xwatches_;
+    std::vector<Watch> rwatches_;
 };
 
 #endif // EMUDORE_SRC_NES_NES_H

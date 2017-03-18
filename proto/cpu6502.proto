@@ -1,0 +1,17 @@
+syntax = "proto3";
+package proto;
+
+message CPU6502 {
+    uint32 a = 1;
+    uint32 x = 2;
+    uint32 y = 3;
+    uint32 sp = 4;
+    uint32 pc = 5;
+    uint32 flags = 6;
+
+    bool nmi_pending = 7;
+    bool irq_pending = 8;
+
+    uint32 stall = 9;
+    uint64 cycles = 10;
+}

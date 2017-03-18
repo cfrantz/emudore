@@ -1,6 +1,7 @@
 #ifndef EMUDORE_SRC_NES_APU_PULSE_H
 #define EMUDORE_SRC_NES_APU_PULSE_H
 #include <cstdint>
+#include "proto/apu.pb.h"
 
 class Pulse {
   public:
@@ -19,6 +20,8 @@ class Pulse {
     void set_timer_high(uint8_t val);
     inline uint16_t length() const { return length_value_; }
     void DebugStuff();
+    void LoadState(proto::APUPulse* state);
+    void SaveState(proto::APUPulse* state);
   private:
     uint8_t InternalOutput();
     bool enabled_;

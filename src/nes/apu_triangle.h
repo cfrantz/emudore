@@ -1,6 +1,7 @@
 #ifndef EMUDORE_SRC_NES_APU_TRIANGLE_H
 #define EMUDORE_SRC_NES_APU_TRIANGLE_H
 #include <cstdint>
+#include "proto/apu.pb.h"
 
 class Triangle {
   public:
@@ -17,6 +18,8 @@ class Triangle {
     void set_timer_high(uint8_t val);
     inline uint16_t length() const { return length_value_; }
     void DebugStuff();
+    void LoadState(proto::APUTriangle *state);
+    void SaveState(proto::APUTriangle *state);
   private:
     uint8_t InternalOutput();
     bool enabled_;
